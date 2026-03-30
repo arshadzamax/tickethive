@@ -5,7 +5,7 @@ import { selectSeatById, selectSelectedSeat } from './seatSelectors.js'
 import { seatPosition, seatFill, isLockedByOther, isAdminLocked } from '../../utils/seatHelpers.js'
 import { selectEffectiveUserId } from '../../utils/identity.js'
 
-function SeatItemInner({ seatId, cell = 24, gap = 8 }) {
+function SeatItemInner({ seatId, eventId, cell = 24, gap = 8 }) {
   const seat = useSelector(state => selectSeatById(state, seatId), shallowEqual)
   const dispatch = useDispatch()
   const selected = useSelector(selectSelectedSeat, shallowEqual)
@@ -28,12 +28,12 @@ function SeatItemInner({ seatId, cell = 24, gap = 8 }) {
     }
     if (seat.status === 'available') {
       if (selected && selected.id !== seat.id && selected.status === 'locked' && selected.lockedBy === effectiveId) {
-        dispatch(releaseSeat({ seatId: selected.id })).finally(() => dispatch(holdSeat({ seatId: seat.id, effectiveUserId: effectiveId })))
+        dispatch(releaseSeat({ seatId: selected.id, eventId })).finally(() => dispatch(holdSeat({ seatId: seat.id, eventId, effectiveUserId: effectiveId })))
         return
       }
-      dispatch(holdSeat({ seatId: seat.id, effectiveUserId: effectiveId }))
+      dispatch(holdSeat({ seatId: seat.id, eventId, effectiveUserId: effectiveId }))
     }
-  }, [seat, dispatch, selected, adminLocked, effectiveId])
+  }, [seat, dispatch, selected, adminLocked, effectiveId, eventId])
 
   return (
     <g transform={`translate(${pos.x}, ${pos.y})`}>

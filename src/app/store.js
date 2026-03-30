@@ -3,6 +3,7 @@ import seatsReducer from '../features/seats/seatSlice.js'
 import bookingReducer from '../features/booking/bookingSlice.js'
 import authReducer from '../features/auth/authSlice.js'
 import adminReducer from '../features/admin/adminSlice.js'
+import eventsReducer from '../features/events/eventSlice.js'
 
 export default function createAppStore() {
   return configureStore({
@@ -10,7 +11,8 @@ export default function createAppStore() {
       seats: seatsReducer,
       booking: bookingReducer,
       auth: authReducer,
-      admin: adminReducer
+      admin: adminReducer,
+      events: eventsReducer
     },
     middleware: (getDefault) => getDefault()
   })

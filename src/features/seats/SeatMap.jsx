@@ -4,7 +4,7 @@ import { fetchSeats } from './seatSlice.js'
 import { makeSelectSeatIds, selectAllSeats, selectLoading } from './seatSelectors.js'
 import SeatItem from './SeatItem.jsx'
 
-export default function SeatMap() {
+export default function SeatMap({ eventId }) {
   const dispatch = useDispatch()
   const selectIds = useMemo(() => makeSelectSeatIds(), [])
   const seatIds = useSelector(selectIds)
@@ -12,8 +12,8 @@ export default function SeatMap() {
   const loading = useSelector(selectLoading)
 
   useEffect(() => {
-    dispatch(fetchSeats())
-  }, [dispatch])
+    if (eventId) dispatch(fetchSeats(eventId))
+  }, [dispatch, eventId])
 
   const dims = useMemo(() => {
     if (!seats.length) return { width: 800, height: 400 }
@@ -31,7 +31,7 @@ export default function SeatMap() {
       <div className="text-sm mb-2 text-neutral-300">Stadium</div>
       <svg width={dims.width} height={dims.height} className="block">
         {seatIds.map(id => (
-          <SeatItem key={id} seatId={id} />
+          <SeatItem key={id} seatId={id} eventId={eventId} />
         ))}
       </svg>
       {loading && <div className="mt-2 text-xs text-neutral-400">Loading seats…</div>}

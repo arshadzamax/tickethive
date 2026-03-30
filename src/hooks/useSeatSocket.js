@@ -4,7 +4,7 @@ import { applySeatLocked, applySeatReleased, applySeatSold, setConnectionStatus,
 import { connectSocket, onSeatLocked, onSeatReleased, onSeatSold, onSeatsReset, onSeatAdminLocked, onGridResized, onConnection } from '../services/socketClient.js'
 import { normalizeSeat } from '../utils/seatHelpers.js'
 
-export function useSeatSocketInit() {
+export function useSeatSocketInit(eventId) {
   const dispatch = useDispatch()
   useEffect(() => {
     const s = connectSocket()
@@ -14,9 +14,9 @@ export function useSeatSocketInit() {
     onSeatReleased(seat => dispatch(applySeatReleased(normalizeSeat(seat))))
 
     // Admin events — re-fetch all seats when admin makes changes
-    onSeatsReset(() => dispatch(fetchSeats()))
+    onSeatsReset(() => { if (eventId) dispatch(fetchSeats(eventId)) })
     onSeatAdminLocked(seat => dispatch(applySeatLocked(normalizeSeat(seat))))
-    onGridResized(() => dispatch(fetchSeats()))
+    onGridResized(() => { if (eventId) dispatch(fetchSeats(eventId)) })
 
     return () => {
       s.off('seat_locked')
@@ -26,5 +26,5 @@ export function useSeatSocketInit() {
       s.off('seat_admin_locked')
       s.off('grid_resized')
     }
-  }, [dispatch])
+  }, [dispatch, eventId])
 }

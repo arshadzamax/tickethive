@@ -6,20 +6,20 @@ import { confirmBooking } from './bookingSlice.js'
 import CountdownTimer from '../seats/CountdownTimer.jsx'
 import { selectEffectiveUserId } from '../../utils/identity.js'
 
-export default function BookingPanel() {
+export default function BookingPanel({ eventId }) {
   const dispatch = useDispatch()
   const seat = useSelector(selectSelectedSeat, shallowEqual)
   const effectiveId = useSelector(selectEffectiveUserId)
 
   const onConfirm = useCallback(() => {
     if (!seat) return
-    dispatch(confirmBooking(seat.id))
-  }, [dispatch, seat])
+    dispatch(confirmBooking({ seatId: seat.id, eventId }))
+  }, [dispatch, seat, eventId])
 
   const onExpire = useCallback(() => {
     if (!seat) return
-    dispatch(releaseSeat({ seatId: seat.id }))
-  }, [dispatch, seat])
+    dispatch(releaseSeat({ seatId: seat.id, eventId }))
+  }, [dispatch, seat, eventId])
 
   return (
     <div className="rounded-lg bg-neutral-800 p-4 shadow-md w-full max-w-sm">

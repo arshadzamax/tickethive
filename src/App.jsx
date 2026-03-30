@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import Layout from './components/Layout.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import LandingPage from './pages/LandingPage.jsx'
+import EventsPage from './pages/EventsPage.jsx'
 import BookingPage from './pages/BookingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
@@ -27,7 +28,15 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
-        path="/booking"
+        path="/events"
+        element={
+          <ProtectedRoute>
+            <EventsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/events/:eventId/booking"
         element={
           <ProtectedRoute>
             <Layout><BookingPage /></Layout>
@@ -35,13 +44,16 @@ export default function App() {
         }
       />
       <Route
-        path="/admin"
+        path="/events/:eventId/admin"
         element={
           <ProtectedRoute requiredRole="admin">
             <Layout><AdminDashboard /></Layout>
           </ProtectedRoute>
         }
       />
+      {/* Legacy redirects */}
+      <Route path="/booking" element={<Navigate to="/events" replace />} />
+      <Route path="/admin" element={<Navigate to="/events" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

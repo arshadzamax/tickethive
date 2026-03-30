@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { resizeGrid, selectAdminActionLoading } from './adminSlice.js'
 
-export default function GridControls({ stats }) {
+export default function GridControls({ stats, eventId }) {
     const dispatch = useDispatch()
     const actionLoading = useSelector(selectAdminActionLoading)
     const [rows, setRows] = useState(stats?.rows || 5)
@@ -10,7 +10,7 @@ export default function GridControls({ stats }) {
 
     const onResize = () => {
         if (rows >= 1 && cols >= 1 && rows <= 50 && cols <= 50) {
-            dispatch(resizeGrid({ rows: Number(rows), cols: Number(cols) }))
+            dispatch(resizeGrid({ rows: Number(rows), cols: Number(cols), eventId }))
         }
     }
 

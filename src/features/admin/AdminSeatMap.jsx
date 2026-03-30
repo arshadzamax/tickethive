@@ -39,7 +39,7 @@ function AdminSeatItem({ seat, cell, gap, onToggleLock }) {
     )
 }
 
-export default function AdminSeatMap() {
+export default function AdminSeatMap({ eventId }) {
     const dispatch = useDispatch()
     const seats = useSelector(selectAllSeats)
     const loading = useSelector(selectLoading)
@@ -60,16 +60,16 @@ export default function AdminSeatMap() {
     const onToggleLock = useCallback((seat) => {
         const isAdminLocked = seat.admin_locked || seat.adminLocked
         if (isAdminLocked) {
-            dispatch(adminUnlockSeat(seat.id))
+            dispatch(adminUnlockSeat({ seatId: seat.id, eventId }))
         } else {
             if (seat.status === 'sold') {
                 const ev = new CustomEvent('th_toast', { detail: { message: 'Cannot lock a sold seat' } })
                 window.dispatchEvent(ev)
                 return
             }
-            dispatch(adminLockSeat(seat.id))
+            dispatch(adminLockSeat({ seatId: seat.id, eventId }))
         }
-    }, [dispatch])
+    }, [dispatch, eventId])
 
     return (
         <div className="rounded-xl bg-neutral-800/60 border border-neutral-700/50 p-5 backdrop-blur-sm">

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useParams } from 'react-router-dom'
 import { fetchSeats } from '../features/seats/seatSlice.js'
+import { useSeatSocketInit } from '../hooks/useSeatSocket.js'
 import { selectLiveStats } from '../features/seats/seatSelectors.js'
 import {
     fetchStats,
@@ -19,6 +21,8 @@ import AdminSeatMap from '../features/admin/AdminSeatMap.jsx'
 
 export default function AdminDashboard() {
     const dispatch = useDispatch()
+    const { eventId } = useParams()
+    useSeatSocketInit(eventId)
     const adminStats = useSelector(selectAdminStats)
     const liveStats = useSelector(selectLiveStats)
     const loading = useSelector(selectAdminLoading)
@@ -28,9 +32,9 @@ export default function AdminDashboard() {
     const [showResetConfirm, setShowResetConfirm] = useState(false)
 
     useEffect(() => {
-        dispatch(fetchStats())
-        dispatch(fetchSeats())
-    }, [dispatch])
+        dispatch(fetchStats(eventId))
+        dispatch(fetchSeats(eventId))
+    }, [dispatch, eventId])
 
     useEffect(() => {
         if (actionMessage) {
@@ -38,10 +42,10 @@ export default function AdminDashboard() {
             window.dispatchEvent(ev)
             dispatch(clearActionMessage())
             // Refresh data after action
-            dispatch(fetchStats())
-            dispatch(fetchSeats())
+            dispatch(fetchStats(eventId))
+            dispatch(fetchSeats(eventId))
         }
-    }, [actionMessage, dispatch])
+    }, [actionMessage, dispatch, eventId])
 
     useEffect(() => {
         if (error) {
@@ -52,9 +56,9 @@ export default function AdminDashboard() {
     }, [error, dispatch])
 
     const handleReset = useCallback(() => {
-        dispatch(resetSeats())
+        dispatch(resetSeats(eventId))
         setShowResetConfirm(false)
-    }, [dispatch])
+    }, [dispatch, eventId])
 
     return (
         <div className="space-y-6">
@@ -102,8 +106,8 @@ export default function AdminDashboard() {
             {loading && <div className="text-sm text-neutral-400 animate-pulse">Loading statistics…</div>}
 
             <StatsCards stats={liveStats} />
-            <GridControls stats={adminStats} />
-            <AdminSeatMap />
+            <GridControls stats={adminStats} eventId={eventId} />
+            <AdminSeatMap eventId={eventId} />
         </div>
     )
 }

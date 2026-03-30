@@ -1,45 +1,45 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import api from '../../services/apiClient.js'
 
-export const fetchStats = createAsyncThunk('admin/fetchStats', async (_, { rejectWithValue }) => {
+export const fetchStats = createAsyncThunk('admin/fetchStats', async (eventId, { rejectWithValue }) => {
     try {
-        const res = await api.get('/admin/stats')
+        const res = await api.get(`/admin/events/${eventId}/stats`)
         return res.data
     } catch (e) {
         return rejectWithValue(e.response?.data || { message: 'Failed to fetch stats' })
     }
 })
 
-export const resetSeats = createAsyncThunk('admin/resetSeats', async (_, { rejectWithValue }) => {
+export const resetSeats = createAsyncThunk('admin/resetSeats', async (eventId, { rejectWithValue }) => {
     try {
-        const res = await api.post('/admin/seats/reset')
+        const res = await api.post(`/admin/events/${eventId}/seats/reset`)
         return res.data
     } catch (e) {
         return rejectWithValue(e.response?.data || { message: 'Reset failed' })
     }
 })
 
-export const adminLockSeat = createAsyncThunk('admin/lockSeat', async (seatId, { rejectWithValue }) => {
+export const adminLockSeat = createAsyncThunk('admin/lockSeat', async ({ seatId, eventId }, { rejectWithValue }) => {
     try {
-        const res = await api.post(`/admin/seats/${seatId}/lock`)
+        const res = await api.post(`/admin/events/${eventId}/seats/${seatId}/lock`)
         return res.data
     } catch (e) {
         return rejectWithValue(e.response?.data || { message: 'Lock failed' })
     }
 })
 
-export const adminUnlockSeat = createAsyncThunk('admin/unlockSeat', async (seatId, { rejectWithValue }) => {
+export const adminUnlockSeat = createAsyncThunk('admin/unlockSeat', async ({ seatId, eventId }, { rejectWithValue }) => {
     try {
-        const res = await api.post(`/admin/seats/${seatId}/unlock`)
+        const res = await api.post(`/admin/events/${eventId}/seats/${seatId}/unlock`)
         return res.data
     } catch (e) {
         return rejectWithValue(e.response?.data || { message: 'Unlock failed' })
     }
 })
 
-export const resizeGrid = createAsyncThunk('admin/resizeGrid', async ({ rows, cols }, { rejectWithValue }) => {
+export const resizeGrid = createAsyncThunk('admin/resizeGrid', async ({ rows, cols, eventId }, { rejectWithValue }) => {
     try {
-        const res = await api.put('/admin/seats/resize', { rows, cols })
+        const res = await api.put(`/admin/events/${eventId}/seats/resize`, { rows, cols })
         return res.data
     } catch (e) {
         return rejectWithValue(e.response?.data || { message: 'Resize failed' })

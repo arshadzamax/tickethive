@@ -3,23 +3,23 @@ import api from '../../services/apiClient.js'
 import { LOCK_DURATION_MS, SEAT_STATUS } from '../../utils/constants.js'
 import { normalizeSeat, normalizeSeats } from '../../utils/seatHelpers.js'
 
-export const fetchSeats = createAsyncThunk('seats/fetchSeats', async () => {
-  const res = await api.get('/seats')
+export const fetchSeats = createAsyncThunk('seats/fetchSeats', async (eventId) => {
+  const res = await api.get(`/events/${eventId}/seats`)
   return res.data
 })
 
-export const holdSeat = createAsyncThunk('seats/holdSeat', async ({ seatId, effectiveUserId }, { rejectWithValue }) => {
+export const holdSeat = createAsyncThunk('seats/holdSeat', async ({ seatId, eventId, effectiveUserId }, { rejectWithValue }) => {
   try {
-    const res = await api.post(`/seats/${seatId}/hold`)
+    const res = await api.post(`/events/${eventId}/seats/${seatId}/hold`)
     return res.data
   } catch (e) {
     return rejectWithValue(e.response?.data || { message: 'Hold failed' })
   }
 })
 
-export const releaseSeat = createAsyncThunk('seats/releaseSeat', async ({ seatId }, { rejectWithValue }) => {
+export const releaseSeat = createAsyncThunk('seats/releaseSeat', async ({ seatId, eventId }, { rejectWithValue }) => {
   try {
-    const res = await api.post(`/seats/${seatId}/release`)
+    const res = await api.post(`/events/${eventId}/seats/${seatId}/release`)
     return res.data
   } catch (e) {
     return rejectWithValue(e.response?.data || { message: 'Release failed' })

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { selectConnectionStatus } from '../features/seats/seatSelectors.js'
 import { selectUser, selectIsAdmin, logout } from '../features/auth/authSlice.js'
 import Toast from './Toast.jsx'
@@ -11,27 +11,39 @@ export default function Layout({ children }) {
   const isAdmin = useSelector(selectIsAdmin)
   const dispatch = useDispatch()
   const location = useLocation()
+  const { eventId } = useParams()
   const dotClass = status === 'connected' ? 'th-connection-dot connected' : 'th-connection-dot connecting'
 
   const isActive = (path) => location.pathname === path
+
+  const bookingPath = eventId ? `/events/${eventId}/booking` : '/events'
+  const adminPath = eventId ? `/events/${eventId}/admin` : '/events'
 
   return (
     <div className="min-h-screen w-full bg-linear-to-b from-[#071024] via-transparent to-[#03040a]">
       <header className="th-header border-b border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link to="/" className="th-brand text-xl hover:opacity-80 transition">TicketHive</Link>
+            <Link to="/events" className="th-brand text-xl hover:opacity-80 transition">TicketHive</Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link
-                to="/booking"
-                className={`transition ${isActive('/booking') ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
+                to="/events"
+                className={`transition ${location.pathname === '/events' ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
               >
-                Booking
+                Events
               </Link>
-              {isAdmin && (
+              {eventId && (
                 <Link
-                  to="/admin"
-                  className={`transition ${isActive('/admin') ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
+                  to={bookingPath}
+                  className={`transition ${isActive(bookingPath) ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
+                >
+                  Booking
+                </Link>
+              )}
+              {isAdmin && eventId && (
+                <Link
+                  to={adminPath}
+                  className={`transition ${isActive(adminPath) ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
                 >
                   Admin
                 </Link>
@@ -39,10 +51,12 @@ export default function Layout({ children }) {
             </nav>
           </div>
           <div className="flex items-center gap-4 text-xs text-neutral-300">
-            <div className="flex items-center gap-2">
-              <span className={dotClass}></span>
-              <span className="capitalize">{status}</span>
-            </div>
+            {eventId && (
+              <div className="flex items-center gap-2">
+                <span className={dotClass}></span>
+                <span className="capitalize">{status}</span>
+              </div>
+            )}
             {user && (
               <div className="flex items-center gap-3">
                 <span className="text-neutral-400">{user.email}</span>
@@ -63,7 +77,7 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      {status !== 'connected' && (
+      {eventId && status !== 'connected' && (
         <div className="bg-yellow-500/10 text-yellow-300 text-xs px-4 py-2 text-center">Connection lost. Live updates paused.</div>
       )}
 

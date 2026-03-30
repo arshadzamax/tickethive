@@ -4,9 +4,9 @@ import api from '../../services/apiClient.js'
 import { normalizeSeat } from '../../utils/seatHelpers.js'
 import { applySeatSold } from '../seats/seatSlice.js'
 
-export const confirmBooking = createAsyncThunk('booking/confirm', async (seatId, { rejectWithValue, dispatch }) => {
+export const confirmBooking = createAsyncThunk('booking/confirm', async ({ seatId, eventId }, { rejectWithValue, dispatch }) => {
   try {
-    const res = await api.post(`/seats/${seatId}/confirm`)
+    const res = await api.post(`/events/${eventId}/seats/${seatId}/confirm`)
     const seat = normalizeSeat(res.data)
     // update seat slice immediately so UI reflects sold state
     dispatch(applySeatSold(seat))
