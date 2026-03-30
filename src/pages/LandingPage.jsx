@@ -1,7 +1,7 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
 import { Navigate } from 'react-router-dom'
-import { selectUser, selectIsAdmin } from '../features/auth/authSlice.js'
+import { selectUser } from '../features/auth/authSlice.js'
 
 import CursorGlow from '../components/landing/CursorGlow.jsx'
 import LandingNav from '../components/landing/LandingNav.jsx'
@@ -14,10 +14,9 @@ import LandingFooter from '../components/landing/LandingFooter.jsx'
 
 export default function LandingPage() {
     const user = useSelector(selectUser)
-    const isAdmin = useSelector(selectIsAdmin)
 
     if (user) {
-        return <Navigate to={isAdmin ? '/admin' : '/booking'} replace />
+        return <Navigate to="/events" replace />
     }
 
     return (
