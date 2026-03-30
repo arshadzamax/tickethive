@@ -7,10 +7,10 @@ const router = Router()
 
 router.use(auth, requireAdmin)
 
-router.post('/admin/seats/reset', adminController.resetAllSeats)
-router.post('/admin/seats/:id/lock', adminController.adminLockSeat)
-router.post('/admin/seats/:id/unlock', adminController.adminUnlockSeat)
-router.put('/admin/seats/resize', adminController.resizeGrid)
-router.get('/admin/stats', adminController.getStats)
+router.post('/admin/events/:eventId/seats/reset', adminController.resetAllSeats)
+router.post('/admin/events/:eventId/seats/:id/lock', adminController.adminLockSeat)
+router.post('/admin/events/:eventId/seats/:id/unlock', adminController.adminUnlockSeat)
+router.put('/admin/events/:eventId/seats/resize', adminController.resizeGrid)
+router.get('/admin/events/:eventId/stats', adminController.getStats)
 
 export default router

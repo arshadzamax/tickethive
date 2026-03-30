@@ -1,11 +1,11 @@
 import { getClient } from '../config/db.js'
 
-export async function createOrder(client, { id, userId, seatId, paymentStatus }) {
+export async function createOrder(client, { id, eventId, userId, seatId, paymentStatus }) {
   const res = await client.query(
-    `INSERT INTO orders (id, user_id, seat_id, payment_status)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id, user_id, seat_id, payment_status, created_at`,
-    [id, userId, seatId, paymentStatus]
+    `INSERT INTO orders (id, event_id, user_id, seat_id, payment_status)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id, event_id, user_id, seat_id, payment_status, created_at`,
+    [id, eventId, userId, seatId, paymentStatus]
   )
   return res.rows[0]
 }
@@ -14,10 +14,12 @@ export async function getOrdersByUser(userId) {
   const client = await getClient()
   try {
     const res = await client.query(
-      `SELECT id, user_id, seat_id, payment_status, created_at
-       FROM orders
-       WHERE user_id = $1
-       ORDER BY created_at DESC`,
+      `SELECT o.id, o.event_id, o.user_id, o.seat_id, o.payment_status, o.created_at,
+              e.name AS event_name
+       FROM orders o
+       JOIN events e ON e.id = o.event_id
+       WHERE o.user_id = $1
+       ORDER BY o.created_at DESC`,
       [userId]
     )
     return res.rows
@@ -25,4 +27,3 @@ export async function getOrdersByUser(userId) {
     client.release()
   }
 }
-

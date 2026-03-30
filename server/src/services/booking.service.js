@@ -6,11 +6,11 @@ import ApiError from '../utils/ApiError.js'
 import { releaseSeatLock } from './lock.service.js'
 import { emitSeatSold } from '../websocket/socket.js'
 
-export async function confirmSeat({ seatId, userId }) {
+export async function confirmSeat({ seatId, eventId, userId }) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
-    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId)
+    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId, eventId)
     if (!seat) {
       throw new ApiError(404, 'Seat not found')
     }
@@ -25,10 +25,11 @@ export async function confirmSeat({ seatId, userId }) {
       throw new ApiError(409, 'Seat lock expired')
     }
 
-    const updatedSeat = await seatRepo.markSeatSold(client, seatId)
+    const updatedSeat = await seatRepo.markSeatSold(client, seatId, eventId)
     try {
       await orderRepo.createOrder(client, {
         id: uuidv4(),
+        eventId,
         userId,
         seatId,
         paymentStatus: 'paid'
@@ -41,7 +42,7 @@ export async function confirmSeat({ seatId, userId }) {
     }
 
     await client.query('COMMIT')
-    await releaseSeatLock(seatId)
+    await releaseSeatLock(eventId, seatId)
     emitSeatSold(updatedSeat)
     return updatedSeat
   } catch (err) {
@@ -54,4 +55,3 @@ export async function confirmSeat({ seatId, userId }) {
     client.release()
   }
 }
-

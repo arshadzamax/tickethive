@@ -1,56 +1,59 @@
 import { query, getClient } from '../config/db.js'
 
-export async function getAllSeats() {
-  const res = await query('SELECT id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats ORDER BY row, number', [])
+export async function getAllSeats(eventId) {
+  const res = await query(
+    'SELECT id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats WHERE event_id = $1 ORDER BY row, number',
+    [eventId]
+  )
   return res.rows
 }
 
-export async function getSeatByIdForUpdate(client, seatId) {
+export async function getSeatByIdForUpdate(client, seatId, eventId) {
   const res = await client.query(
-    'SELECT id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats WHERE id = $1 FOR UPDATE',
-    [seatId]
+    'SELECT id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats WHERE id = $1 AND event_id = $2 FOR UPDATE',
+    [seatId, eventId]
   )
   return res.rows[0] || null
 }
 
-export async function lockSeat(client, seatId, userId, lockMs) {
+export async function lockSeat(client, seatId, eventId, userId, lockMs) {
   const res = await client.query(
     `UPDATE seats
      SET status = 'locked',
-         locked_by = $2,
-         lock_expires_at = NOW() + ($3::int || ' milliseconds')::interval,
+         locked_by = $3,
+         lock_expires_at = NOW() + ($4::int || ' milliseconds')::interval,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`,
-    [seatId, userId, lockMs]
+     WHERE id = $1 AND event_id = $2
+     RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`,
+    [seatId, eventId, userId, lockMs]
   )
   return res.rows[0] || null
 }
 
-export async function markSeatSold(client, seatId) {
+export async function markSeatSold(client, seatId, eventId) {
   const res = await client.query(
     `UPDATE seats
      SET status = 'sold',
          locked_by = NULL,
          lock_expires_at = NULL,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`,
-    [seatId]
+     WHERE id = $1 AND event_id = $2
+     RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`,
+    [seatId, eventId]
   )
   return res.rows[0] || null
 }
 
-export async function releaseSeat(client, seatId) {
+export async function releaseSeat(client, seatId, eventId) {
   const res = await client.query(
     `UPDATE seats
      SET status = 'available',
          locked_by = NULL,
          lock_expires_at = NULL,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`,
-    [seatId]
+     WHERE id = $1 AND event_id = $2
+     RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`,
+    [seatId, eventId]
   )
   return res.rows[0] || null
 }
@@ -68,7 +71,7 @@ export async function expireLockedSeats() {
        WHERE status = 'locked'
          AND lock_expires_at IS NOT NULL
          AND lock_expires_at < NOW()
-       RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`
+       RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`
     )
     await client.query('COMMIT')
     return res.rows
@@ -84,18 +87,20 @@ export async function expireLockedSeats() {
    Admin Operations
 ============================= */
 
-export async function resetAllSeats() {
+export async function resetAllSeats(eventId) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
-    await client.query('DELETE FROM orders')
+    await client.query('DELETE FROM orders WHERE event_id = $1', [eventId])
     await client.query(
       `UPDATE seats
        SET status = 'available',
            locked_by = NULL,
            lock_expires_at = NULL,
            admin_locked = FALSE,
-           updated_at = NOW()`
+           updated_at = NOW()
+       WHERE event_id = $1`,
+      [eventId]
     )
     await client.query('COMMIT')
   } catch (err) {
@@ -106,7 +111,7 @@ export async function resetAllSeats() {
   }
 }
 
-export async function adminLockSeat(seatId) {
+export async function adminLockSeat(seatId, eventId) {
   const res = await query(
     `UPDATE seats
      SET admin_locked = TRUE,
@@ -114,26 +119,26 @@ export async function adminLockSeat(seatId) {
          locked_by = NULL,
          lock_expires_at = NULL,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`,
-    [seatId]
+     WHERE id = $1 AND event_id = $2
+     RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`,
+    [seatId, eventId]
   )
   return res.rows[0] || null
 }
 
-export async function adminUnlockSeat(seatId) {
+export async function adminUnlockSeat(seatId, eventId) {
   const res = await query(
     `UPDATE seats
      SET admin_locked = FALSE,
          updated_at = NOW()
-     WHERE id = $1
-     RETURNING id, row, number, status, locked_by, lock_expires_at, admin_locked`,
-    [seatId]
+     WHERE id = $1 AND event_id = $2
+     RETURNING id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked`,
+    [seatId, eventId]
   )
   return res.rows[0] || null
 }
 
-export async function getSeatStats() {
+export async function getSeatStats(eventId) {
   const res = await query(`
     SELECT
       COUNT(*) AS total,
@@ -144,7 +149,8 @@ export async function getSeatStats() {
       MAX(row) AS max_row,
       MAX(number) AS max_col
     FROM seats
-  `)
+    WHERE event_id = $1
+  `, [eventId])
   const row = res.rows[0]
   return {
     total: Number(row.total),
@@ -157,8 +163,11 @@ export async function getSeatStats() {
   }
 }
 
-export async function getGridDimensions() {
-  const res = await query('SELECT MAX(row) AS max_row, MAX(number) AS max_col FROM seats')
+export async function getGridDimensions(eventId) {
+  const res = await query(
+    'SELECT MAX(row) AS max_row, MAX(number) AS max_col FROM seats WHERE event_id = $1',
+    [eventId]
+  )
   const row = res.rows[0]
   return {
     rows: Number(row.max_row) || 0,
@@ -166,27 +175,29 @@ export async function getGridDimensions() {
   }
 }
 
-export async function resizeGrid(newRows, newCols) {
+export async function resizeGrid(eventId, newRows, newCols) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
 
-    const dims = await client.query('SELECT MAX(row) AS max_row, MAX(number) AS max_col FROM seats')
+    const dims = await client.query(
+      'SELECT MAX(row) AS max_row, MAX(number) AS max_col FROM seats WHERE event_id = $1',
+      [eventId]
+    )
     const currentRows = Number(dims.rows[0].max_row) || 0
     const currentCols = Number(dims.rows[0].max_col) || 0
 
-    // Remove seats beyond new dimensions (only if available and not sold)
+    // Remove seats beyond new dimensions
     if (newRows < currentRows || newCols < currentCols) {
-      // Delete orders for seats that will be removed
       await client.query(
         `DELETE FROM orders WHERE seat_id IN (
-          SELECT id FROM seats WHERE row > $1 OR number > $2
+          SELECT id FROM seats WHERE event_id = $1 AND (row > $2 OR number > $3)
         )`,
-        [newRows, newCols]
+        [eventId, newRows, newCols]
       )
       await client.query(
-        'DELETE FROM seats WHERE row > $1 OR number > $2',
-        [newRows, newCols]
+        'DELETE FROM seats WHERE event_id = $1 AND (row > $2 OR number > $3)',
+        [eventId, newRows, newCols]
       )
     }
 
@@ -194,8 +205,8 @@ export async function resizeGrid(newRows, newCols) {
     for (let r = 1; r <= newRows; r++) {
       for (let n = 1; n <= newCols; n++) {
         await client.query(
-          'INSERT INTO seats (row, number) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [r, n]
+          'INSERT INTO seats (event_id, row, number) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING',
+          [eventId, r, n]
         )
       }
     }

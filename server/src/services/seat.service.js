@@ -6,14 +6,14 @@ import { emitSeatLocked, emitSeatReleased } from '../websocket/socket.js'
 
 const LOCK_MS = 5 * 60 * 1000
 
-export async function listSeats() {
-  return seatRepo.getAllSeats()
+export async function listSeats(eventId) {
+  return seatRepo.getAllSeats(eventId)
 }
 
-export async function holdSeat({ seatId, userId }) {
-  const lockAcquired = await acquireSeatLock(seatId, userId)
+export async function holdSeat({ seatId, eventId, userId }) {
+  const lockAcquired = await acquireSeatLock(eventId, seatId, userId)
   if (!lockAcquired) {
-    const owner = await getSeatLockOwner(seatId)
+    const owner = await getSeatLockOwner(eventId, seatId)
     if (owner && owner !== userId) {
       throw new ApiError(409, 'Seat is already locked')
     }
@@ -22,7 +22,7 @@ export async function holdSeat({ seatId, userId }) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
-    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId)
+    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId, eventId)
     if (!seat) {
       throw new ApiError(404, 'Seat not found')
     }
@@ -36,13 +36,13 @@ export async function holdSeat({ seatId, userId }) {
       throw new ApiError(409, 'Seat is already locked')
     }
 
-    const updatedSeat = await seatRepo.lockSeat(client, seatId, userId, LOCK_MS)
+    const updatedSeat = await seatRepo.lockSeat(client, seatId, eventId, userId, LOCK_MS)
     await client.query('COMMIT')
     emitSeatLocked(updatedSeat)
     return updatedSeat
   } catch (err) {
     await client.query('ROLLBACK')
-    await releaseSeatLock(seatId)
+    await releaseSeatLock(eventId, seatId)
     if (err instanceof ApiError) {
       throw err
     }
@@ -52,11 +52,11 @@ export async function holdSeat({ seatId, userId }) {
   }
 }
 
-export async function releaseSeat({ seatId, userId }) {
+export async function releaseSeat({ seatId, eventId, userId }) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
-    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId)
+    const seat = await seatRepo.getSeatByIdForUpdate(client, seatId, eventId)
     if (!seat) {
       throw new ApiError(404, 'Seat not found')
     }
@@ -67,9 +67,9 @@ export async function releaseSeat({ seatId, userId }) {
       throw new ApiError(409, 'Seat lock owned by another user')
     }
 
-    const updatedSeat = await seatRepo.releaseSeat(client, seatId)
+    const updatedSeat = await seatRepo.releaseSeat(client, seatId, eventId)
     await client.query('COMMIT')
-    await releaseSeatLock(seatId)
+    await releaseSeatLock(eventId, seatId)
     emitSeatReleased(updatedSeat)
     return updatedSeat
   } catch (err) {
@@ -82,4 +82,3 @@ export async function releaseSeat({ seatId, userId }) {
     client.release()
   }
 }
-

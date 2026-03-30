@@ -4,10 +4,9 @@ import * as seatController from '../controllers/seat.controller.js'
 
 const router = Router()
 
-router.get('/seats', seatController.getSeats)
-router.post('/seats/:id/hold', auth, seatController.holdSeat)
-router.post('/seats/:id/confirm', auth, seatController.confirmSeat)
-router.post('/seats/:id/release', auth, seatController.releaseSeat)
+router.get('/events/:eventId/seats', seatController.getSeats)
+router.post('/events/:eventId/seats/:id/hold', auth, seatController.holdSeat)
+router.post('/events/:eventId/seats/:id/confirm', auth, seatController.confirmSeat)
+router.post('/events/:eventId/seats/:id/release', auth, seatController.releaseSeat)
 
 export default router
-
