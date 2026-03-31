@@ -48,9 +48,13 @@ export default function HeroSection() {
                                 Get Started Free
                                 <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">→</span>
                             </Link>
-                            <Link to="/login" className="px-7 py-3 text-sm font-medium rounded-xl bg-white/5 border border-white/10 text-neutral-200 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-0.5">
-                                Sign In
-                            </Link>
+                            <a
+                                href="#live-events"
+                                className="px-7 py-3 text-sm font-medium rounded-xl bg-white/5 border border-white/10 text-neutral-200 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2"
+                            >
+                                <span>Browse Events</span>
+                                <span className="text-emerald-400">↓</span>
+                            </a>
                         </div>
                     </ScrollReveal>
                 </div>

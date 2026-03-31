@@ -15,6 +15,16 @@ export function getSocket() {
   return socket
 }
 
+/** Tell the server to add this socket to the event_${eventId} room */
+export function joinEvent(eventId) {
+  if (eventId) getSocket().emit('join_event', eventId)
+}
+
+/** Tell the server to remove this socket from the event_${eventId} room */
+export function leaveEvent(eventId) {
+  if (eventId) getSocket().emit('leave_event', eventId)
+}
+
 export function onSeatLocked(cb) {
   getSocket().on('seat_locked', cb)
 }

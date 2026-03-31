@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { fetchEvents, selectAllEvents, selectEventsLoading, selectEventsError } from '../features/events/eventSlice.js'
-import { selectIsAdmin } from '../features/auth/authSlice.js'
+import { selectUser, selectIsAdmin } from '../features/auth/authSlice.js'
 import Layout from '../components/Layout.jsx'
 
 export default function EventsPage() {
@@ -11,6 +11,7 @@ export default function EventsPage() {
     const events = useSelector(selectAllEvents)
     const loading = useSelector(selectEventsLoading)
     const error = useSelector(selectEventsError)
+    const user = useSelector(selectUser)
     const isAdmin = useSelector(selectIsAdmin)
 
     useEffect(() => {
@@ -18,7 +19,11 @@ export default function EventsPage() {
     }, [dispatch])
 
     const handleEventClick = (eventId) => {
-        navigate(isAdmin ? `/events/${eventId}/admin` : `/events/${eventId}/booking`)
+        if (!user) {
+            navigate('/login', { state: { from: `/events/${eventId}/booking` } })
+        } else {
+            navigate(isAdmin ? `/events/${eventId}/admin` : `/events/${eventId}/booking`)
+        }
     }
 
     const formatDate = (dateStr) => {
@@ -82,7 +87,7 @@ export default function EventsPage() {
                                 </div>
                                 <div className="pt-2">
                                     <span className="text-xs text-emerald-400/80 font-medium group-hover:text-emerald-300 transition-colors">
-                                        {isAdmin ? 'Manage Event →' : 'View Seats →'}
+                                        {!user ? 'Sign In to Book →' : isAdmin ? 'Manage Event →' : 'View Seats →'}
                                     </span>
                                 </div>
                             </div>

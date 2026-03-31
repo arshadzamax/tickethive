@@ -28,9 +28,11 @@ api.interceptors.response.use(
   r => r,
   e => {
     if (e.response?.status === 401) {
+      const hadToken = !!localStorage.getItem(TOKEN_KEY)
       localStorage.removeItem(TOKEN_KEY)
-      // Only redirect if we're not already on auth pages
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      // Only hard-redirect if the user had a token that is now invalid (expired session).
+      // Don't redirect anonymous/guest requests on public pages that happen to 401.
+      if (hadToken && window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login'
       }
     }

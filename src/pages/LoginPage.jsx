@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { loginUser, selectAuthLoading, selectAuthError, selectUser, clearAuthError } from '../features/auth/authSlice.js'
 
 export default function LoginPage() {
     const dispatch = useDispatch()
     const navigate = useNavigate()
+    const location = useLocation()
     const user = useSelector(selectUser)
     const loading = useSelector(selectAuthLoading)
     const error = useSelector(selectAuthError)
@@ -13,15 +14,18 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
 
+    // Destination after login: honour the 'from' state or fall back to /events
+    const redirectTo = location.state?.from || '/events'
+
     useEffect(() => {
         dispatch(clearAuthError())
     }, [dispatch])
 
     useEffect(() => {
         if (user) {
-            navigate(user.role === 'admin' ? '/admin' : '/booking', { replace: true })
+            navigate(redirectTo, { replace: true })
         }
-    }, [user, navigate])
+    }, [user, navigate, redirectTo])
 
     const onSubmit = (e) => {
         e.preventDefault()

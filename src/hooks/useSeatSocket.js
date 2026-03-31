@@ -1,24 +1,36 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { applySeatLocked, applySeatReleased, applySeatSold, setConnectionStatus, fetchSeats } from '../features/seats/seatSlice.js'
-import { connectSocket, onSeatLocked, onSeatReleased, onSeatSold, onSeatsReset, onSeatAdminLocked, onGridResized, onConnection } from '../services/socketClient.js'
+import { connectSocket, joinEvent, leaveEvent, onSeatLocked, onSeatReleased, onSeatSold, onSeatsReset, onSeatAdminLocked, onGridResized, onConnection } from '../services/socketClient.js'
 import { normalizeSeat } from '../utils/seatHelpers.js'
 
 export function useSeatSocketInit(eventId) {
   const dispatch = useDispatch()
+
   useEffect(() => {
+    if (!eventId) return
+
     const s = connectSocket()
+
+    // If already connected, join immediately; otherwise wait for connect
+    if (s.connected) {
+      joinEvent(eventId)
+    } else {
+      s.once('connect', () => joinEvent(eventId))
+    }
+
     onConnection(status => dispatch(setConnectionStatus(status)))
     onSeatLocked(seat => dispatch(applySeatLocked(normalizeSeat(seat))))
     onSeatSold(seat => dispatch(applySeatSold(normalizeSeat(seat))))
     onSeatReleased(seat => dispatch(applySeatReleased(normalizeSeat(seat))))
 
     // Admin events — re-fetch all seats when admin makes changes
-    onSeatsReset(() => { if (eventId) dispatch(fetchSeats(eventId)) })
+    onSeatsReset(() => dispatch(fetchSeats(eventId)))
     onSeatAdminLocked(seat => dispatch(applySeatLocked(normalizeSeat(seat))))
-    onGridResized(() => { if (eventId) dispatch(fetchSeats(eventId)) })
+    onGridResized(() => dispatch(fetchSeats(eventId)))
 
     return () => {
+      leaveEvent(eventId)
       s.off('seat_locked')
       s.off('seat_sold')
       s.off('seat_released')

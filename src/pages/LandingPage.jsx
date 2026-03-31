@@ -1,7 +1,4 @@
 import React from 'react'
-import { useSelector } from 'react-redux'
-import { Navigate } from 'react-router-dom'
-import { selectUser } from '../features/auth/authSlice.js'
 
 import CursorGlow from '../components/landing/CursorGlow.jsx'
 import LandingNav from '../components/landing/LandingNav.jsx'
@@ -9,15 +6,11 @@ import HeroSection from '../components/landing/HeroSection.jsx'
 import BookingTicker from '../components/landing/BookingTicker.jsx'
 import FeaturesSection from '../components/landing/FeaturesSection.jsx'
 import HowItWorksSection from '../components/landing/HowItWorksSection.jsx'
+import LiveEventsSection from '../components/landing/LiveEventsSection.jsx'
 import PortalSection from '../components/landing/PortalSection.jsx'
 import LandingFooter from '../components/landing/LandingFooter.jsx'
 
 export default function LandingPage() {
-    const user = useSelector(selectUser)
-
-    if (user) {
-        return <Navigate to="/events" replace />
-    }
 
     return (
         <div className="min-h-screen bg-[#060a14] text-neutral-100 overflow-hidden">
@@ -35,6 +28,7 @@ export default function LandingPage() {
             <BookingTicker />
             <FeaturesSection />
             <HowItWorksSection />
+            <LiveEventsSection />
             <PortalSection />
             <LandingFooter />
         </div>

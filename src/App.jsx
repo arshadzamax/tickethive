@@ -9,6 +9,7 @@ import BookingPage from './pages/BookingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
+import CreateEventPage from './pages/CreateEventPage.jsx'
 import { fetchCurrentUser, selectToken, selectAuthInitialized } from './features/auth/authSlice.js'
 
 export default function App() {
@@ -27,11 +28,12 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/events" element={<EventsPage />} />
       <Route
-        path="/events"
+        path="/events/create"
         element={
           <ProtectedRoute>
-            <EventsPage />
+            <CreateEventPage />
           </ProtectedRoute>
         }
       />

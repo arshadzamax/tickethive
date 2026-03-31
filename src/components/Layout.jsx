@@ -1,6 +1,6 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { selectConnectionStatus } from '../features/seats/seatSelectors.js'
 import { selectUser, selectIsAdmin, logout } from '../features/auth/authSlice.js'
 import Toast from './Toast.jsx'
@@ -10,6 +10,7 @@ export default function Layout({ children }) {
   const user = useSelector(selectUser)
   const isAdmin = useSelector(selectIsAdmin)
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const location = useLocation()
   const { eventId } = useParams()
   const dotClass = status === 'connected' ? 'th-connection-dot connected' : 'th-connection-dot connecting'
@@ -24,13 +25,20 @@ export default function Layout({ children }) {
       <header className="th-header border-b border-neutral-800">
         <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link to="/events" className="th-brand text-xl hover:opacity-80 transition">TicketHive</Link>
+            <Link to="/" className="th-brand text-xl hover:opacity-80 transition">TicketHive</Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link
                 to="/events"
                 className={`transition ${location.pathname === '/events' ? 'text-emerald-400 font-medium' : 'text-neutral-400 hover:text-neutral-200'}`}
               >
                 Events
+              </Link>
+              <Link
+                to="/events/create"
+                className={`transition flex items-center gap-1 ${location.pathname === '/events/create' ? 'text-violet-400 font-medium' : 'text-neutral-400 hover:text-violet-300'}`}
+              >
+                <span>🎪</span>
+                <span>Host</span>
               </Link>
               {eventId && (
                 <Link
@@ -66,7 +74,7 @@ export default function Layout({ children }) {
                   </span>
                 )}
                 <button
-                  onClick={() => dispatch(logout())}
+                  onClick={() => { dispatch(logout()); navigate('/') }}
                   className="px-2.5 py-1 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition text-xs"
                 >
                   Logout

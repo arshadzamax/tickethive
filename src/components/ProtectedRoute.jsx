@@ -1,11 +1,12 @@
 import React from 'react'
 import { useSelector } from 'react-redux'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { selectUser, selectAuthInitialized } from '../features/auth/authSlice.js'
 
 export default function ProtectedRoute({ children, requiredRole }) {
     const user = useSelector(selectUser)
     const initialized = useSelector(selectAuthInitialized)
+    const location = useLocation()
 
     if (!initialized) {
         return (
@@ -16,11 +17,11 @@ export default function ProtectedRoute({ children, requiredRole }) {
     }
 
     if (!user) {
-        return <Navigate to="/login" replace />
+        return <Navigate to="/login" state={{ from: location.pathname }} replace />
     }
 
     if (requiredRole && user.role !== requiredRole) {
-        return <Navigate to="/booking" replace />
+        return <Navigate to="/events" replace />
     }
 
     return children
