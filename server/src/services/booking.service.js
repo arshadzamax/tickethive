@@ -43,7 +43,7 @@ export async function confirmSeat({ seatId, eventId, userId }) {
 
     await client.query('COMMIT')
     await releaseSeatLock(eventId, seatId)
-    emitSeatSold(updatedSeat)
+    emitSeatSold(updatedSeat, eventId)
     return updatedSeat
   } catch (err) {
     await client.query('ROLLBACK')

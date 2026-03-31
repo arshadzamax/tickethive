@@ -38,7 +38,7 @@ export async function holdSeat({ seatId, eventId, userId }) {
 
     const updatedSeat = await seatRepo.lockSeat(client, seatId, eventId, userId, LOCK_MS)
     await client.query('COMMIT')
-    emitSeatLocked(updatedSeat)
+    emitSeatLocked(updatedSeat, eventId)
     return updatedSeat
   } catch (err) {
     await client.query('ROLLBACK')
@@ -70,7 +70,7 @@ export async function releaseSeat({ seatId, eventId, userId }) {
     const updatedSeat = await seatRepo.releaseSeat(client, seatId, eventId)
     await client.query('COMMIT')
     await releaseSeatLock(eventId, seatId)
-    emitSeatReleased(updatedSeat)
+    emitSeatReleased(updatedSeat, eventId)
     return updatedSeat
   } catch (err) {
     await client.query('ROLLBACK')

@@ -21,19 +21,39 @@ export async function initSocket(httpServer) {
 
   io.on('connection', socket => {
     logger.info('Socket connected', { id: socket.id })
+
+    // Client emits this when they open a specific event's booking/admin page
+    socket.on('join_event', (eventId) => {
+      if (!eventId) return
+      const room = `event_${eventId}`
+      socket.join(room)
+      logger.info('Socket joined event room', { id: socket.id, room })
+    })
+
+    socket.on('leave_event', (eventId) => {
+      if (!eventId) return
+      socket.leave(`event_${eventId}`)
+    })
+
     socket.on('disconnect', () => {
       logger.info('Socket disconnected', { id: socket.id })
     })
   })
 
+  // Redis pub/sub subscriber — forward seat events to the correct event room
   const subscriber = new Redis(env.redisUrl)
   await subscriber.subscribe('seat_events')
   subscriber.on('message', (channel, message) => {
     if (channel !== 'seat_events') return
     try {
       const payload = JSON.parse(message)
-      const { event, seat } = payload
-      if (io && event && seat) {
+      const { event, seat, eventId } = payload
+      if (!io || !event || !seat) return
+
+      if (eventId) {
+        io.to(`event_${eventId}`).emit(event, seat)
+      } else {
+        // Fallback: broadcast globally (should not happen in normal operation)
         io.emit(event, seat)
       }
     } catch (e) {
@@ -44,32 +64,35 @@ export async function initSocket(httpServer) {
   return io
 }
 
-function emit(event, data) {
-  if (io) {
+function emitToRoom(eventId, event, data) {
+  if (!io) return
+  if (eventId) {
+    io.to(`event_${eventId}`).emit(event, data)
+  } else {
     io.emit(event, data)
   }
 }
 
-export function emitSeatLocked(seat) {
-  emit('seat_locked', seat)
+export function emitSeatLocked(seat, eventId) {
+  emitToRoom(eventId, 'seat_locked', seat)
 }
 
-export function emitSeatSold(seat) {
-  emit('seat_sold', seat)
+export function emitSeatSold(seat, eventId) {
+  emitToRoom(eventId, 'seat_sold', seat)
 }
 
-export function emitSeatReleased(seat) {
-  emit('seat_released', seat)
+export function emitSeatReleased(seat, eventId) {
+  emitToRoom(eventId, 'seat_released', seat)
 }
 
-export function emitSeatsReset() {
-  emit('seats_reset', {})
+export function emitSeatsReset(eventId) {
+  emitToRoom(eventId, 'seats_reset', {})
 }
 
-export function emitSeatAdminLocked(seat) {
-  emit('seat_admin_locked', seat)
+export function emitSeatAdminLocked(seat, eventId) {
+  emitToRoom(eventId, 'seat_admin_locked', seat)
 }
 
-export function emitGridResized() {
-  emit('grid_resized', {})
+export function emitGridResized(eventId) {
+  emitToRoom(eventId, 'grid_resized', {})
 }
