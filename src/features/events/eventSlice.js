@@ -19,6 +19,33 @@ export const createEvent = createAsyncThunk('events/createEvent', async (formDat
   }
 })
 
+export const updateEvent = createAsyncThunk('events/updateEvent', async ({ eventId, formData }, { rejectWithValue }) => {
+  try {
+    const res = await api.put(`/events/${eventId}`, formData)
+    return res.data
+  } catch (e) {
+    return rejectWithValue(e.response?.data || { message: 'Failed to update event' })
+  }
+})
+
+export const cancelEvent = createAsyncThunk('events/cancelEvent', async (eventId, { rejectWithValue }) => {
+  try {
+    const res = await api.patch(`/events/${eventId}/status`)
+    return res.data
+  } catch (e) {
+    return rejectWithValue(e.response?.data || { message: 'Failed to cancel event' })
+  }
+})
+
+export const deleteEvent = createAsyncThunk('events/deleteEvent', async (eventId, { rejectWithValue }) => {
+  try {
+    await api.delete(`/events/${eventId}`)
+    return eventId
+  } catch (e) {
+    return rejectWithValue(e.response?.data || { message: 'Failed to delete event' })
+  }
+})
+
 const initialState = {
   events: [],
   loading: false,
@@ -60,6 +87,21 @@ const eventsSlice = createSlice({
       .addCase(createEvent.rejected, (state, action) => {
         state.creating = false
         state.createError = action.payload?.message || 'Failed to create event'
+      })
+      .addCase(updateEvent.fulfilled, (state, action) => {
+        const index = state.events.findIndex(e => e.id === action.payload.id)
+        if (index !== -1) {
+          state.events[index] = action.payload
+        }
+      })
+      .addCase(cancelEvent.fulfilled, (state, action) => {
+        const index = state.events.findIndex(e => e.id === action.payload.id)
+        if (index !== -1) {
+          state.events[index] = action.payload
+        }
+      })
+      .addCase(deleteEvent.fulfilled, (state, action) => {
+        state.events = state.events.filter(e => e.id !== action.payload)
       })
   }
 })

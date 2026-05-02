@@ -57,7 +57,7 @@ export default function LiveEventsSection() {
                         Upcoming <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Events</span>
                     </h2>
                     <p className="mt-3 text-neutral-400 max-w-md mx-auto">
-                        Browse live events and book your seat instantly. No waiting, no double bookings.
+                        Pick an event, choose your seat, and you're in. Availability updates live as others book.
                     </p>
                 </div>
             </ScrollReveal>
@@ -82,62 +82,68 @@ export default function LiveEventsSection() {
                 </div>
             )}
 
-            {!loading && !error && events.length === 0 && (
-                <div className="text-center py-14">
-                    <div className="text-5xl mb-4">🎟️</div>
-                    <p className="text-neutral-500 text-sm">No events available right now. Check back soon!</p>
-                </div>
-            )}
+            {(() => {
+                const upcomingEvents = events.filter(e => new Date(e.date) >= new Date())
 
-            {!loading && events.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {events.map((event, idx) => (
-                        <ScrollReveal key={event.id} delay={idx * 80}>
-                            <div className="group relative overflow-hidden rounded-xl bg-neutral-800/50 border border-neutral-700/40 backdrop-blur-sm transition-all duration-300 hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1 flex flex-col h-full">
-                                {/* Top accent gradient */}
-                                <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-emerald-500/0 via-emerald-500/60 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                if (!loading && !error && upcomingEvents.length === 0) return (
+                    <div className="text-center py-14">
+                        <div className="text-5xl mb-4">🎟️</div>
+                        <p className="text-neutral-500 text-sm">No upcoming events right now. Check back soon!</p>
+                    </div>
+                )
 
-                                <div className="p-5 flex flex-col gap-3 flex-1">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <h3 className="text-base font-semibold text-neutral-100 group-hover:text-emerald-300 transition-colors leading-snug">
-                                            {event.name}
-                                        </h3>
-                                        <span className="text-2xl flex-shrink-0">{EVENT_EMOJIS[idx % EVENT_EMOJIS.length]}</span>
-                                    </div>
+                if (!loading && upcomingEvents.length > 0) return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {upcomingEvents.map((event, idx) => (
+                            <ScrollReveal key={event.id} delay={idx * 80}>
+                                <div className="group relative overflow-hidden rounded-xl bg-neutral-800/50 border border-neutral-700/40 backdrop-blur-sm transition-all duration-300 flex flex-col h-full hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/10 hover:-translate-y-1">
+                                    {/* Top accent gradient */}
+                                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-emerald-500/0 via-emerald-500/60 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                                    <div className="space-y-1.5 text-xs text-neutral-400">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-neutral-500">📅</span>
-                                            <span>{formatDate(event.date)}</span>
+                                    <div className="p-5 flex flex-col gap-3 flex-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h3 className="text-base font-semibold leading-snug transition-colors text-neutral-100 group-hover:text-emerald-300">
+                                                {event.name}
+                                            </h3>
+                                            <span className="text-2xl flex-shrink-0">{EVENT_EMOJIS[idx % EVENT_EMOJIS.length]}</span>
                                         </div>
-                                        {event.organiser && (
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-neutral-500">👤</span>
-                                                <span>{event.organiser}</span>
-                                            </div>
-                                        )}
-                                    </div>
 
-                                    <div className="mt-auto pt-3">
-                                        <button
-                                            id={`event-book-${event.id}`}
-                                            onClick={() => handleEventClick(event.id)}
-                                            className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 text-emerald-400 hover:from-emerald-500 hover:to-cyan-500 hover:text-black hover:border-transparent hover:shadow-lg hover:shadow-emerald-500/20"
-                                        >
-                                            {user
-                                                ? (isAdmin ? 'Manage Event →' : 'Book Seats →')
-                                                : 'Sign In to Book →'}
-                                        </button>
+                                        <div className="space-y-1.5 text-xs text-neutral-400">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-neutral-500">📅</span>
+                                                <span>{formatDate(event.date)}</span>
+                                            </div>
+                                            {event.organiser && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-neutral-500">👤</span>
+                                                    <span>{event.organiser}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-auto pt-3">
+                                            <button
+                                                id={`event-book-${event.id}`}
+                                                onClick={() => handleEventClick(event.id)}
+                                                className="w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20 text-emerald-400 hover:from-emerald-500 hover:to-cyan-500 hover:text-black hover:border-transparent hover:shadow-lg hover:shadow-emerald-500/20"
+                                            >
+                                                {user
+                                                    ? (isAdmin ? 'Manage Event →' : 'Book Seats →')
+                                                    : 'Sign In to Book →'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </ScrollReveal>
-                    ))}
-                </div>
-            )}
+                            </ScrollReveal>
+                        ))}
+                    </div>
+                )
+
+                return null
+            })()}
 
             {/* CTA for unauthenticated users */}
-            {!user && !loading && events.length > 0 && (
+            {!user && !loading && events.filter(e => new Date(e.date) >= new Date()).length > 0 && (
                 <ScrollReveal delay={200}>
                     <div className="mt-12 text-center">
                         <p className="text-xs text-neutral-500 mb-3">Free to browse. Sign in to reserve your spot.</p>

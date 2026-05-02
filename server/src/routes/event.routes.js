@@ -7,5 +7,8 @@ const router = Router()
 router.get('/events', eventController.getEvents)
 router.get('/events/:id', eventController.getEvent)
 router.post('/events', auth, eventController.createEvent)
+router.put('/events/:id', auth, eventController.editEvent)
+router.patch('/events/:id/status', auth, eventController.cancelEvent)
+router.delete('/events/:id', auth, eventController.deleteEvent)
 
 export default router

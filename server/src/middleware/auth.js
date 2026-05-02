@@ -9,7 +9,7 @@ export default function auth(req, res, next) {
     const token = authHeader.slice(7)
     try {
       const decoded = jwt.verify(token, env.jwtSecret)
-      req.user = { id: decoded.id, role: decoded.role || 'user' }
+      req.user = { id: decoded.id, role: decoded.role || 'user', email: decoded.email }
       return next()
     } catch {
       return next(new ApiError(401, 'Invalid or expired token'))

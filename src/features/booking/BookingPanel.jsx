@@ -1,47 +1,70 @@
-import React, { useCallback } from 'react'
-import { useDispatch, useSelector, shallowEqual } from 'react-redux'
-import { selectSelectedSeat } from '../seats/seatSelectors.js'
-import { releaseSeat } from '../seats/seatSlice.js'
-import { confirmBooking } from './bookingSlice.js'
-import CountdownTimer from '../seats/CountdownTimer.jsx'
-import { selectEffectiveUserId } from '../../utils/identity.js'
+import React, { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { setEventType } from './bookingSlice'
+import MultiSeatSelector from '../../components/booking/MultiSeatSelector'
+import GeneralTicketBooking from '../../components/booking/GeneralTicketBooking'
+import BookingCart from '../../components/booking/BookingCart'
 
-export default function BookingPanel({ eventId }) {
+export default function BookingPanel({ event, eventId }) {
   const dispatch = useDispatch()
-  const seat = useSelector(selectSelectedSeat, shallowEqual)
-  const effectiveId = useSelector(selectEffectiveUserId)
+  const eventType = event?.event_type || 'SEATED'
+  const booking = useSelector(state => state.booking)
 
-  const onConfirm = useCallback(() => {
-    if (!seat) return
-    dispatch(confirmBooking({ seatId: seat.id, eventId }))
-  }, [dispatch, seat, eventId])
+  useEffect(() => {
+    dispatch(setEventType(eventType))
+  }, [eventType, dispatch])
 
-  const onExpire = useCallback(() => {
-    if (!seat) return
-    dispatch(releaseSeat({ seatId: seat.id, eventId }))
-  }, [dispatch, seat, eventId])
+  if (!event) {
+    return (
+      <div className="rounded-lg bg-neutral-800 p-6 text-center">
+        <div className="text-neutral-400">Loading event details...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="rounded-lg bg-neutral-800 p-4 shadow-md w-full max-w-sm">
-      <div className="text-lg font-semibold mb-2">Booking</div>
-      {!seat && <div className="text-neutral-400 text-sm">Select a seat to start</div>}
-      {seat && (
-        <div className="space-y-2">
-          <div className="text-sm">Seat: <span className="text-neutral-200">{seat.row}{seat.number}</span></div>
-          {seat.status === 'locked' && seat.lockedBy === effectiveId && (
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-neutral-400">Time remaining</div>
-              <CountdownTimer target={seat.lockExpiresAt} onExpire={onExpire} />
-            </div>
+    <div className="space-y-6 w-full">
+      {/* Main Booking Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          {eventType === 'SEATED' ? (
+            <MultiSeatSelector
+              eventId={eventId}
+              eventType={eventType}
+              premiumPrice={event.price_premium}
+              normalPrice={event.price_normal}
+              premiumRows={event.premium_rows || []}
+            />
+          ) : (
+            <GeneralTicketBooking
+              event={event}
+              eventType={eventType}
+              premiumPrice={event.price_premium}
+              normalPrice={event.price_normal}
+            />
           )}
-          <div className="pt-2">
-            <button disabled={!seat || seat.status !== 'locked' || seat.lockedBy !== effectiveId} onClick={onConfirm} className="px-3 py-2 rounded bg-emerald-500 text-black disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-400">
-              Confirm Booking
-            </button>
-          </div>
+        </div>
+
+        {/* Booking Cart Sidebar */}
+        <div>
+          <BookingCart event={event} eventType={eventType} />
+        </div>
+      </div>
+
+      {/* Status Messages */}
+      {booking.error && (
+        <div className="p-4 bg-red-900 border border-red-700 rounded-lg text-red-200">
+          <p className="font-semibold">Error</p>
+          <p className="text-sm">{booking.error}</p>
+        </div>
+      )}
+
+      {booking.holdingStatus === 'success' && (
+        <div className="p-4 bg-green-900 border border-green-700 rounded-lg text-green-200">
+          <p className="font-semibold">✓ Items Successfully Held</p>
+          <p className="text-sm">Your items are reserved for 5 minutes. Complete checkout now.</p>
         </div>
       )}
     </div>
   )
 }
-

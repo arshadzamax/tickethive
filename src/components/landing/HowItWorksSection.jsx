@@ -4,13 +4,13 @@ import { steps } from './landingData.js'
 
 export default function HowItWorksSection() {
     return (
-        <section className="relative z-10 mx-auto max-w-7xl px-6 py-20">
+        <section id="how-it-works" className="relative z-10 mx-auto max-w-7xl px-6 py-20">
             <ScrollReveal>
                 <div className="text-center mb-14">
                     <h2 className="text-3xl sm:text-4xl font-bold text-neutral-100">
                         How It <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">Works</span>
                     </h2>
-                    <p className="mt-3 text-neutral-400 max-w-lg mx-auto">Three simple steps from sign-up to seated.</p>
+                    <p className="mt-3 text-neutral-400 max-w-lg mx-auto">From discovery to doorstep in under 60 seconds.</p>
                 </div>
             </ScrollReveal>
 

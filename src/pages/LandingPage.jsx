@@ -6,6 +6,7 @@ import HeroSection from '../components/landing/HeroSection.jsx'
 import BookingTicker from '../components/landing/BookingTicker.jsx'
 import FeaturesSection from '../components/landing/FeaturesSection.jsx'
 import HowItWorksSection from '../components/landing/HowItWorksSection.jsx'
+import TestimonialsSection from '../components/landing/TestimonialsSection.jsx'
 import LiveEventsSection from '../components/landing/LiveEventsSection.jsx'
 import PortalSection from '../components/landing/PortalSection.jsx'
 import LandingFooter from '../components/landing/LandingFooter.jsx'
@@ -28,6 +29,7 @@ export default function LandingPage() {
             <BookingTicker />
             <FeaturesSection />
             <HowItWorksSection />
+            <TestimonialsSection />
             <LiveEventsSection />
             <PortalSection />
             <LandingFooter />

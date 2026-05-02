@@ -11,6 +11,8 @@ import seatRoutes from './routes/seat.routes.js'
 import orderRoutes from './routes/order.routes.js'
 import adminRoutes from './routes/admin.routes.js'
 import eventRoutes from './routes/event.routes.js'
+import venueRoutes from './routes/venue.routes.js'
+import profileRoutes from './routes/profile.routes.js'
 import { initSocket } from './websocket/socket.js'
 import redis from './config/redis.js'
 import logger from './utils/logger.js'
@@ -47,7 +49,9 @@ app.use('/api', authRoutes)
 app.use('/api', seatRoutes)
 app.use('/api', orderRoutes)
 app.use('/api', adminRoutes)
+app.use('/api', venueRoutes)
 app.use('/api', eventRoutes)
+app.use('/api', profileRoutes)
 
 /* =============================
    Health Check (Production Ready)

@@ -59,40 +59,56 @@ export default function EventsPage() {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {events.map(event => (
-                        <button
-                            key={event.id}
-                            onClick={() => handleEventClick(event.id)}
-                            className="group relative overflow-hidden rounded-xl bg-neutral-800/60 border border-neutral-700/50 p-5 backdrop-blur-sm text-left transition-all hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="space-y-3">
-                                <div className="flex items-start justify-between gap-2">
-                                    <h3 className="text-lg font-semibold text-neutral-100 group-hover:text-emerald-400 transition-colors">
-                                        {event.name}
-                                    </h3>
-                                    <span className="text-xl">🎪</span>
-                                </div>
-                                <div className="space-y-1.5 text-sm text-neutral-400">
-                                    <div className="flex items-center gap-2">
-                                        <span>📅</span>
-                                        <span>{formatDate(event.date)}</span>
-                                    </div>
-                                    {event.organiser && (
-                                        <div className="flex items-center gap-2">
-                                            <span>👤</span>
-                                            <span>{event.organiser}</span>
+                    {events.map(event => {
+                        const isExpired = new Date(event.date) < new Date()
+                        const canClick = !isExpired || isAdmin
+                        return (
+                            <button
+                                key={event.id}
+                                onClick={() => canClick && handleEventClick(event.id)}
+                                disabled={!canClick}
+                                className={`group relative overflow-hidden rounded-xl bg-neutral-800/60 border p-5 backdrop-blur-sm text-left transition-all ${isExpired ? 'border-neutral-700/30 opacity-55 cursor-not-allowed' : 'border-neutral-700/50 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 hover:scale-[1.02] active:scale-[0.98]'}`}
+                            >
+                                {!isExpired && (
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                )}
+                                <div className="space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <h3 className={`text-lg font-semibold transition-colors ${isExpired ? 'text-neutral-400' : 'text-neutral-100 group-hover:text-emerald-400'}`}>
+                                            {event.name}
+                                        </h3>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            {isExpired && (
+                                                <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-full bg-red-500/15 border border-red-500/25 text-red-400">
+                                                    Expired
+                                                </span>
+                                            )}
+                                            <span className="text-xl">🎪</span>
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="space-y-1.5 text-sm text-neutral-400">
+                                        <div className="flex items-center gap-2">
+                                            <span>📅</span>
+                                            <span className={isExpired ? 'line-through text-neutral-500' : ''}>{formatDate(event.date)}</span>
+                                        </div>
+                                        {event.organiser && (
+                                            <div className="flex items-center gap-2">
+                                                <span>👤</span>
+                                                <span>{event.organiser}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="pt-2">
+                                        <span className={`text-xs font-medium transition-colors ${isExpired ? 'text-red-400/60' : 'text-emerald-400/80 group-hover:text-emerald-300'}`}>
+                                            {isExpired
+                                                ? (isAdmin ? 'Manage Event →' : 'Event Ended')
+                                                : (!user ? 'Sign In to Book →' : isAdmin ? 'Manage Event →' : 'View Seats →')}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="pt-2">
-                                    <span className="text-xs text-emerald-400/80 font-medium group-hover:text-emerald-300 transition-colors">
-                                        {!user ? 'Sign In to Book →' : isAdmin ? 'Manage Event →' : 'View Seats →'}
-                                    </span>
-                                </div>
-                            </div>
-                        </button>
-                    ))}
+                            </button>
+                        )
+                    })}
                 </div>
             </div>
         </Layout>

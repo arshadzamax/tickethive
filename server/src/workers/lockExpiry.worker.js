@@ -11,7 +11,11 @@ async function runOnce() {
     if (expiredSeats.length) {
       logger.info('Expired seat locks', { count: expiredSeats.length })
       for (const seat of expiredSeats) {
-        const payload = JSON.stringify({ event: 'seat_released', seat })
+        const payload = JSON.stringify({
+          event: 'seat_released',
+          eventId: seat.event_id,
+          seat
+        })
         await publisher.publish('seat_events', payload)
       }
     }

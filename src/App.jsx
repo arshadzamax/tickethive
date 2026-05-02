@@ -6,10 +6,13 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import EventsPage from './pages/EventsPage.jsx'
 import BookingPage from './pages/BookingPage.jsx'
+import BookingSuccessPage from './pages/BookingSuccessPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import CreateEventPage from './pages/CreateEventPage.jsx'
+import CreateVenuePage from './pages/CreateVenuePage.jsx'
 import { fetchCurrentUser, selectToken, selectAuthInitialized } from './features/auth/authSlice.js'
 
 export default function App() {
@@ -38,10 +41,34 @@ export default function App() {
         }
       />
       <Route
+        path="/venues/create"
+        element={
+          <ProtectedRoute>
+            <CreateVenuePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/events/:eventId/booking"
         element={
           <ProtectedRoute>
             <Layout><BookingPage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Layout><ProfilePage /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/booking-success/:groupBookingId"
+        element={
+          <ProtectedRoute>
+            <BookingSuccessPage />
           </ProtectedRoute>
         }
       />

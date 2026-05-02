@@ -4,13 +4,18 @@ import { features } from './landingData.js'
 
 export default function FeaturesSection() {
     return (
-        <section className="relative z-10 mx-auto max-w-7xl px-6 py-20">
+        <section id="features" className="relative z-10 mx-auto max-w-7xl px-6 py-20">
             <ScrollReveal>
                 <div className="text-center mb-14">
                     <h2 className="text-3xl sm:text-4xl font-bold text-neutral-100">
-                        Built for <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Performance</span>
+                        Everything You Need to{' '}
+                        <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                            Sell Out Every Event
+                        </span>
                     </h2>
-                    <p className="mt-3 text-neutral-400 max-w-lg mx-auto">Enterprise-grade architecture with real-time capabilities at its core.</p>
+                    <p className="mt-3 text-neutral-400 max-w-xl mx-auto">
+                        From seamless attendee booking to powerful organizer tools — one platform that handles it all.
+                    </p>
                 </div>
             </ScrollReveal>
 

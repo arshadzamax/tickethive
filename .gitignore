@@ -9,3 +9,10 @@ npm-debug.log
 *.log
 logs/
 .agents
+server/docker-compose.yml
+server/Dockerfile
+
+
+architecture.md.resolved
+codebase_reading_guide.md.resolved
+frontend_architecture.md.resolved

@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import ScrollReveal from './ScrollReveal.jsx'
 import AnimatedSeatGrid from './AnimatedSeatGrid.jsx'
+import { socialProof } from './landingData.js'
 
 export default function HeroSection() {
     return (
@@ -18,24 +19,24 @@ export default function HeroSection() {
                             </div>
                             <div className="w-px h-3.5 bg-white/10" />
                             <span className="text-xs tracking-widest uppercase text-neutral-300/80 font-medium">
-                                Real-Time Seat Allocation Engine
+                                Trusted by 1,200+ Event Organizers
                             </span>
                         </div>
                     </ScrollReveal>
 
                     <ScrollReveal delay={100}>
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight">
-                            <span className="block text-neutral-100">Book Your Perfect Seat,</span>
+                        <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.1] tracking-tight">
+                            <span className="block text-neutral-100">The Smartest Way to</span>
                             <span className="block bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                                In Real-Time.
+                                Sell & Book Seats.
                             </span>
                         </h1>
                     </ScrollReveal>
 
                     <ScrollReveal delay={200}>
                         <p className="mt-5 text-base sm:text-lg text-neutral-400 max-w-lg leading-relaxed lg:mx-0 mx-auto">
-                            Experience concurrency-safe, real-time seat booking with optimistic UI,
-                            distributed locking, and instant WebSocket broadcasts.
+                            Live seat maps, instant reservations, and zero double bookings.
+                            Whether you're hosting a 50-seat workshop or a 5,000-seat arena — TicketHive makes every ticket count.
                         </p>
                     </ScrollReveal>
 
@@ -45,14 +46,14 @@ export default function HeroSection() {
                                 to="/register"
                                 className="group px-7 py-3 text-sm font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:from-emerald-400 hover:to-cyan-400 transition-all duration-300 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
                             >
-                                Get Started Free
+                                Start Selling Tickets — Free
                                 <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">→</span>
                             </Link>
                             <a
                                 href="#live-events"
                                 className="px-7 py-3 text-sm font-medium rounded-xl bg-white/5 border border-white/10 text-neutral-200 hover:bg-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-0.5 flex items-center gap-2"
                             >
-                                <span>Browse Events</span>
+                                <span>See Upcoming Events</span>
                                 <span className="text-emerald-400">↓</span>
                             </a>
                         </div>
@@ -68,7 +69,7 @@ export default function HeroSection() {
                             <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
                             <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
                             <div className="ml-3 flex-1 h-5 rounded-md bg-white/5 flex items-center px-3">
-                                <span className="text-[10px] text-neutral-600">tickethive.app/booking</span>
+                                <span className="text-[10px] text-neutral-600">tickethive.app/venue/live</span>
                             </div>
                         </div>
                         <div className="p-5 sm:p-6">
@@ -78,14 +79,10 @@ export default function HeroSection() {
                 </ScrollReveal>
             </div>
 
-            {/* Stats bar */}
+            {/* Social proof stats bar */}
             <ScrollReveal delay={400}>
                 <div className="mt-16 flex items-center justify-center gap-8 sm:gap-16 text-center">
-                    {[
-                        { value: '< 16ms', label: 'UI Response' },
-                        { value: '100%', label: 'Real-Time Sync' },
-                        { value: '0', label: 'Double Bookings' }
-                    ].map(stat => (
+                    {socialProof.map(stat => (
                         <div key={stat.label}>
                             <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">{stat.value}</div>
                             <div className="text-xs text-neutral-500 mt-1">{stat.label}</div>

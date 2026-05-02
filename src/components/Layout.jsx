@@ -67,7 +67,15 @@ export default function Layout({ children }) {
             )}
             {user && (
               <div className="flex items-center gap-3">
-                <span className="text-neutral-400">{user.email}</span>
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-neutral-800 transition group"
+                >
+                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-[10px] font-bold text-white">
+                    {user.email?.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-neutral-400 group-hover:text-neutral-200 transition">{user.email}</span>
+                </Link>
                 {isAdmin && (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
                     Admin

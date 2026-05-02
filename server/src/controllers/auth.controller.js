@@ -5,7 +5,7 @@ import ApiError from '../utils/ApiError.js'
 import env from '../config/env.js'
 
 function signToken(user) {
-    return jwt.sign({ id: user.id, role: user.role }, env.jwtSecret, { expiresIn: '7d' })
+    return jwt.sign({ id: user.id, role: user.role, email: user.email }, env.jwtSecret, { expiresIn: '7d' })
 }
 
 export async function register(req, res, next) {
