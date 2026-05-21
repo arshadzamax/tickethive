@@ -20,12 +20,17 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-router-dom": "^5.3.3",
     "@vitejs/plugin-react": "^5.1.4",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
     "tailwindcss": "^4.2.0",
+    "typescript": "^6.0.3",
     "vite": "^7.3.1"
   }
 }

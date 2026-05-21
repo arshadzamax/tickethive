@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "src/app.js",
+  "main": "dist/app.js",
   "scripts": {
-    "start": "node src/app.js",
-    "worker": "node src/workers/lockExpiry.worker.js",
-    "dev": "cross-env NODE_ENV=development nodemon src/app.js",
-    "db:init": "node src/scripts/init-db.js",
-    "db:reset": "node src/scripts/init-db.js --reset"
+    "build": "tsc",
+    "start": "node dist/app.js",
+    "worker": "node dist/workers/lockExpiry.worker.js",
+    "dev": "cross-env NODE_ENV=development tsx watch src/app.ts",
+    "db:init": "tsx src/scripts/init-db.ts",
+    "db:reset": "tsx src/scripts/init-db.ts --reset"
   },
   "dependencies": {
     "@socket.io/redis-adapter": "^8.2.0",
@@ -28,7 +29,16 @@
     "uuid": "^11.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.9.1",
+    "@types/uuid": "^10.0.0",
     "cross-env": "^10.1.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
   }
 }
