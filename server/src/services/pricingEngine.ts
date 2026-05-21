@@ -1,16 +1,25 @@
 import { query } from '../config/db.js'
 
-/**
- * Evaluates dynamic pricing rules for an event and returns adjusted prices.
- *
- * Supported rule shapes:
- *   { type: 'surge',      threshold: 80, increase_pct: 15 }
- *   { type: 'early_bird', ends_at: '2026-05-10T00:00:00Z', discount_pct: 20 }
- *
- * Both rules are applied multiplicatively if active.
- * Returns the adjusted prices and a list of applied rule descriptions.
- */
-export async function getEffectivePrice(eventId) {
+interface SurgeRule {
+  type: 'surge'
+  threshold: number
+  increase_pct: number
+}
+
+interface EarlyBirdRule {
+  type: 'early_bird'
+  ends_at: string
+  discount_pct: number
+}
+
+type PricingRule = SurgeRule | EarlyBirdRule
+
+interface AppliedRule {
+  type: string
+  label: string
+}
+
+export async function getEffectivePrice(eventId: string) {
   // Fetch base prices, rules, and capacity
   const eventRes = await query(
     `SELECT e.price_normal, e.price_premium, e.pricing_rules,
@@ -23,10 +32,10 @@ export async function getEffectivePrice(eventId) {
   if (!eventRes.rows[0]) return null
 
   const { price_normal, price_premium, pricing_rules, total_capacity, event_type } = eventRes.rows[0]
-  const rules = Array.isArray(pricing_rules) ? pricing_rules : (pricing_rules ? JSON.parse(pricing_rules) : [])
+  const rules: PricingRule[] = Array.isArray(pricing_rules) ? pricing_rules : (pricing_rules ? JSON.parse(pricing_rules) : [])
 
   let multiplier = 1.0
-  const appliedRules = []
+  const appliedRules: AppliedRule[] = []
 
   for (const rule of rules) {
     if (rule.type === 'surge') {
@@ -73,7 +82,7 @@ export async function getEffectivePrice(eventId) {
     }
   }
 
-  const round2 = (n) => Math.round(n * 100) / 100
+  const round2 = (n: number) => Math.round(n * 100) / 100
 
   return {
     normalPrice: round2(Number(price_normal) * multiplier),
