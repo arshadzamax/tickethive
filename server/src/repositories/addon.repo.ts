@@ -1,6 +1,6 @@
 import { query } from '../config/db.js'
 
-export async function getAddonsByEvent(eventId) {
+export async function getAddonsByEvent(eventId: string) {
   const res = await query(
     `SELECT id, event_id, name, description, price, max_quantity, created_at
      FROM event_addons WHERE event_id = $1 ORDER BY created_at`,
@@ -9,7 +9,15 @@ export async function getAddonsByEvent(eventId) {
   return res.rows
 }
 
-export async function createAddon({ eventId, name, description, price, maxQuantity }) {
+interface CreateAddonInput {
+  eventId: string
+  name: string
+  description?: string
+  price: number
+  maxQuantity?: number
+}
+
+export async function createAddon({ eventId, name, description, price, maxQuantity }: CreateAddonInput) {
   const res = await query(
     `INSERT INTO event_addons (event_id, name, description, price, max_quantity)
      VALUES ($1, $2, $3, $4, $5)
@@ -19,7 +27,14 @@ export async function createAddon({ eventId, name, description, price, maxQuanti
   return res.rows[0]
 }
 
-export async function updateAddon(addonId, { name, description, price, maxQuantity }) {
+interface UpdateAddonInput {
+  name: string
+  description?: string
+  price: number
+  maxQuantity?: number
+}
+
+export async function updateAddon(addonId: string, { name, description, price, maxQuantity }: UpdateAddonInput) {
   const res = await query(
     `UPDATE event_addons SET name=$1, description=$2, price=$3, max_quantity=$4
      WHERE id=$5 RETURNING id, event_id, name, description, price, max_quantity, created_at`,
@@ -28,11 +43,11 @@ export async function updateAddon(addonId, { name, description, price, maxQuanti
   return res.rows[0] || null
 }
 
-export async function deleteAddon(addonId) {
+export async function deleteAddon(addonId: string) {
   await query('DELETE FROM event_addons WHERE id=$1', [addonId])
 }
 
-export async function getAddonById(addonId) {
+export async function getAddonById(addonId: string) {
   const res = await query(
     'SELECT id, event_id, name, description, price, max_quantity FROM event_addons WHERE id=$1',
     [addonId]
@@ -40,7 +55,12 @@ export async function getAddonById(addonId) {
   return res.rows[0] || null
 }
 
-export async function createOrderAddons(client, groupBookingId, addonItems) {
+interface AddonItem {
+  addonId: string
+  quantity: number
+}
+
+export async function createOrderAddons(client: any, groupBookingId: string, addonItems: AddonItem[]) {
   let total = 0
   for (const item of addonItems) {
     const { addonId, quantity } = item

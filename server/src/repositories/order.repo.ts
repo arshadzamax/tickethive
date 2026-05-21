@@ -1,6 +1,14 @@
 import { getClient, query } from '../config/db.js'
 
-export async function createOrder(client, { id, eventId, userId, seatId, paymentStatus }) {
+interface CreateOrderInput {
+  id: string
+  eventId: string
+  userId: string
+  seatId?: string
+  paymentStatus: string
+}
+
+export async function createOrder(client: any, { id, eventId, userId, seatId, paymentStatus }: CreateOrderInput) {
   const res = await client.query(
     `INSERT INTO orders (id, event_id, user_id, seat_id, payment_status)
      VALUES ($1, $2, $3, $4, $5)
@@ -10,7 +18,7 @@ export async function createOrder(client, { id, eventId, userId, seatId, payment
   return res.rows[0]
 }
 
-export async function getOrdersByUser(userId) {
+export async function getOrdersByUser(userId: string) {
   const client = await getClient()
   try {
     const res = await client.query(
@@ -30,7 +38,7 @@ export async function getOrdersByUser(userId) {
   }
 }
 
-export async function getOrdersByGroupBooking(groupBookingId) {
+export async function getOrdersByGroupBooking(groupBookingId: string) {
   const res = await query(
     `SELECT o.id, o.event_id, o.user_id, o.seat_id, o.ticket_count, o.category, 
             o.price_per_unit, o.total_amount, o.payment_status, o.created_at,
@@ -45,7 +53,7 @@ export async function getOrdersByGroupBooking(groupBookingId) {
   return res.rows
 }
 
-export async function getGroupBookingById(groupBookingId) {
+export async function getGroupBookingById(groupBookingId: string) {
   const res = await query(
     'SELECT id, user_id, event_id, total_amount, status, created_at FROM group_bookings WHERE id = $1',
     [groupBookingId]
@@ -53,7 +61,7 @@ export async function getGroupBookingById(groupBookingId) {
   return res.rows[0] || null
 }
 
-export async function getGroupBookingsByUser(userId) {
+export async function getGroupBookingsByUser(userId: string) {
   const res = await query(
     `SELECT gb.id, gb.user_id, gb.event_id, gb.total_amount, gb.status, gb.created_at,
             e.name AS event_name, v.type AS event_type
@@ -67,7 +75,7 @@ export async function getGroupBookingsByUser(userId) {
   return res.rows
 }
 
-export async function updateGroupBookingStatus(groupBookingId, status) {
+export async function updateGroupBookingStatus(groupBookingId: string, status: string) {
   const res = await query(
     'UPDATE group_bookings SET status = $1 WHERE id = $2 RETURNING id, status, user_id, event_id, total_amount, created_at',
     [status, groupBookingId]
@@ -75,7 +83,7 @@ export async function updateGroupBookingStatus(groupBookingId, status) {
   return res.rows[0]
 }
 
-export async function getSeatsByGroupBooking(groupBookingId) {
+export async function getSeatsByGroupBooking(groupBookingId: string) {
   const res = await query(
     `SELECT o.seat_id, s.row, s.number, s.category, o.price_per_unit
      FROM orders o

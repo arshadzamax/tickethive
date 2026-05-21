@@ -1,6 +1,6 @@
 import { query } from '../config/db.js'
 
-export async function getPromoCodesByEvent(eventId) {
+export async function getPromoCodesByEvent(eventId: string) {
   const res = await query(
     `SELECT id, event_id, code, discount_type, discount_value, max_uses, uses_count, expires_at, created_at
      FROM promo_codes WHERE event_id=$1 ORDER BY created_at DESC`,
@@ -9,7 +9,17 @@ export async function getPromoCodesByEvent(eventId) {
   return res.rows
 }
 
-export async function createPromoCode({ eventId, createdBy, code, discountType, discountValue, maxUses, expiresAt }) {
+interface CreatePromoCodeInput {
+  eventId: string
+  createdBy?: string
+  code: string
+  discountType: string
+  discountValue: number
+  maxUses?: number
+  expiresAt?: string
+}
+
+export async function createPromoCode({ eventId, createdBy, code, discountType, discountValue, maxUses, expiresAt }: CreatePromoCodeInput) {
   const res = await query(
     `INSERT INTO promo_codes (event_id, created_by, code, discount_type, discount_value, max_uses, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -19,7 +29,7 @@ export async function createPromoCode({ eventId, createdBy, code, discountType, 
   return res.rows[0]
 }
 
-export async function deletePromoCode(codeId) {
+export async function deletePromoCode(codeId: string) {
   await query('DELETE FROM promo_codes WHERE id=$1', [codeId])
 }
 
@@ -27,7 +37,7 @@ export async function deletePromoCode(codeId) {
  * Validate a promo code for an event.
  * Returns { valid, discount, code, reason } 
  */
-export async function validatePromoCode(eventId, code) {
+export async function validatePromoCode(eventId: string, code: string) {
   const res = await query(
     `SELECT * FROM promo_codes WHERE event_id=$1 AND code=$2`,
     [eventId, code.toUpperCase()]
@@ -54,7 +64,7 @@ export async function validatePromoCode(eventId, code) {
 /**
  * Atomically increment uses_count. Call inside a DB transaction.
  */
-export async function incrementPromoUse(client, promoId) {
+export async function incrementPromoUse(client: any, promoId: string) {
   await client.query(
     'UPDATE promo_codes SET uses_count = uses_count + 1 WHERE id=$1',
     [promoId]

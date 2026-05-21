@@ -8,7 +8,7 @@ export async function getAllVenues() {
   return res.rows
 }
 
-export async function getVenueById(venueId) {
+export async function getVenueById(venueId: string) {
   const res = await query(
     'SELECT id, name, type, rows, cols, total_capacity, default_premium_rows, created_at FROM venues WHERE id = $1',
     [venueId]
@@ -16,7 +16,16 @@ export async function getVenueById(venueId) {
   return res.rows[0] || null
 }
 
-export async function createVenue({ name, type, rows, cols, totalCapacity, defaultPremiumRows }) {
+interface CreateVenueInput {
+  name: string
+  type: string
+  rows: number
+  cols: number
+  totalCapacity: number
+  defaultPremiumRows?: any[]
+}
+
+export async function createVenue({ name, type, rows, cols, totalCapacity, defaultPremiumRows }: CreateVenueInput) {
   const res = await query(
     `INSERT INTO venues (name, type, rows, cols, total_capacity, default_premium_rows)
      VALUES ($1, $2, $3, $4, $5, $6)
