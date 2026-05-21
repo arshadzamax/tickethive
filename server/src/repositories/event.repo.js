@@ -2,7 +2,7 @@ import { query } from '../config/db.js'
 
 export async function getAllEvents() {
   const res = await query(
-    `SELECT e.id, e.name, e.date, e.status, e.organiser, e.created_by, e.price_normal, e.price_premium, e.created_at, e.venue_id,
+    `SELECT e.id, e.name, e.date, e.status, e.organiser, e.created_by, e.price_normal, e.price_premium, e.pricing_rules, e.created_at, e.venue_id,
             v.name as venue_name, v.type as event_type, v.rows, v.cols, v.total_capacity as total_capacity, v.default_premium_rows as premium_rows
      FROM events e
      JOIN venues v ON e.venue_id = v.id
@@ -14,7 +14,7 @@ export async function getAllEvents() {
 
 export async function getEventById(eventId) {
   const res = await query(
-    `SELECT e.id, e.name, e.date, e.status, e.organiser, e.created_by, e.price_normal, e.price_premium, e.created_at, e.venue_id,
+    `SELECT e.id, e.name, e.date, e.status, e.organiser, e.created_by, e.price_normal, e.price_premium, e.pricing_rules, e.created_at, e.venue_id,
             v.name as venue_name, v.type as event_type, v.rows, v.cols, v.total_capacity as total_capacity, v.default_premium_rows as premium_rows
      FROM events e
      JOIN venues v ON e.venue_id = v.id
@@ -24,12 +24,12 @@ export async function getEventById(eventId) {
   return res.rows[0] || null
 }
 
-export async function createEvent({ venueId, name, date, organiser, priceNormal, pricePremium, createdBy }) {
+export async function createEvent({ venueId, name, date, organiser, priceNormal, pricePremium, createdBy, pricingRules }) {
   const res = await query(
-    `INSERT INTO events (venue_id, name, date, organiser, price_normal, price_premium, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     RETURNING id, venue_id, name, date, organiser, created_by, price_normal, price_premium, created_at`,
-    [venueId, name, date, organiser || null, priceNormal, pricePremium, createdBy || null]
+    `INSERT INTO events (venue_id, name, date, organiser, price_normal, price_premium, created_by, pricing_rules)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING id, venue_id, name, date, organiser, created_by, price_normal, price_premium, pricing_rules, created_at`,
+    [venueId, name, date, organiser || null, priceNormal, pricePremium, createdBy || null, JSON.stringify(pricingRules || [])]
   )
   return res.rows[0]
 }

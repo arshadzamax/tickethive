@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import BookingPanel from '../features/booking/BookingPanel.jsx'
 import { useSeatSocketInit } from '../hooks/useSeatSocket.js'
 import { fetchEvents, selectAllEvents, selectEventsLoading } from '../features/events/eventSlice.js'
 import { fetchSeats } from '../features/seats/seatSlice.js'
+import api from '../services/apiClient.js'
 
 function formatDate(dateStr) {
   if (!dateStr) return null
@@ -26,6 +27,7 @@ export default function BookingPage() {
   const dispatch = useDispatch()
   const events = useSelector(selectAllEvents)
   const loading = useSelector(selectEventsLoading)
+  const [effectivePrices, setEffectivePrices] = useState(null)
 
   // Fetch events if the store is empty (e.g. user navigated directly to this URL)
   useEffect(() => {
@@ -40,6 +42,14 @@ export default function BookingPage() {
       dispatch(fetchSeats(eventId))
     }
   }, [dispatch, eventId])
+
+  // Fetch effective (dynamic) pricing
+  useEffect(() => {
+    if (!eventId) return
+    api.get(`/events/${eventId}/effective-price`)
+      .then(r => setEffectivePrices(r.data))
+      .catch(() => {})
+  }, [eventId])
 
   const event = events.find(e => String(e.id) === String(eventId))
 
@@ -78,8 +88,24 @@ export default function BookingPage() {
         </div>
       </div>
 
+      {/* Dynamic pricing alerts */}
+      {effectivePrices?.appliedRules?.map((rule, i) => (
+        <div
+          key={i}
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium ${
+            rule.type === 'surge'
+              ? 'bg-red-500/10 border-red-500/30 text-red-300'
+              : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+          }`}
+        >
+          <span className="text-base">{rule.type === 'surge' ? '🔥' : '🐦'}</span>
+          <span>{rule.label}</span>
+        </div>
+      ))}
+
       {/* Booking Panel (contains seat selector + cart) */}
-      <BookingPanel event={event} eventId={eventId} />
+      <BookingPanel event={event} eventId={eventId} effectivePrices={effectivePrices} />
     </div>
   )
 }
+

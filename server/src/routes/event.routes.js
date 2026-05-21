@@ -6,6 +6,7 @@ const router = Router()
 
 router.get('/events', eventController.getEvents)
 router.get('/events/:id', eventController.getEvent)
+router.get('/events/:id/effective-price', eventController.effectivePrice)
 router.post('/events', auth, eventController.createEvent)
 router.put('/events/:id', auth, eventController.editEvent)
 router.patch('/events/:id/status', auth, eventController.cancelEvent)

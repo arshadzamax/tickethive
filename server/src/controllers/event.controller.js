@@ -2,6 +2,7 @@ import * as eventRepo from '../repositories/event.repo.js'
 import * as venueRepo from '../repositories/venue.repo.js'
 import { query } from '../config/db.js'
 import ApiError from '../utils/ApiError.js'
+import { getEffectivePrice } from '../services/pricingEngine.js'
 
 export async function getEvents(req, res, next) {
   try {
@@ -46,7 +47,8 @@ export async function createEvent(req, res, next) {
       organiser: organiser?.trim() || 'Organiser',
       priceNormal: normalPrice,
       pricePremium: premiumPrice,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      pricingRules: req.body.pricingRules || [],
     })
 
     if (venue.type === 'SEATED') {
@@ -144,3 +146,14 @@ export async function deleteEvent(req, res, next) {
     next(err)
   }
 }
+
+export async function effectivePrice(req, res, next) {
+  try {
+    const result = await getEffectivePrice(req.params.id)
+    if (!result) throw new ApiError(404, 'Event not found')
+    res.json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+

@@ -443,8 +443,91 @@ function BookingCard({ booking, orders, showCountdown, isPast }) {
 function HostedEventCard({ event, refreshProfile }) {
   const dispatch = useDispatch()
   const [isEditing, setIsEditing] = useState(false)
+  const [showAddons, setShowAddons] = useState(false)
+  const [showPromos, setShowPromos] = useState(false)
   const isPast = new Date(event.date) < new Date()
   const isCancelled = event.status === 'cancelled'
+
+  // --- Add-on management state ---
+  const [addons, setAddons] = useState([])
+  const [addonsLoading, setAddonsLoading] = useState(false)
+  const [addonForm, setAddonForm] = useState({ name: '', description: '', price: '', maxQuantity: '' })
+  const [addonSaving, setAddonSaving] = useState(false)
+
+  // --- Promo code management state ---
+  const [promos, setPromos] = useState([])
+  const [promosLoading, setPromosLoading] = useState(false)
+  const [promoForm, setPromoForm] = useState({ code: '', discountType: 'pct', discountValue: '', maxUses: '', expiresAt: '' })
+  const [promoSaving, setPromoSaving] = useState(false)
+
+  const fetchAddons = async () => {
+    setAddonsLoading(true)
+    try { const r = await api.get(`/events/${event.id}/addons`); setAddons(r.data) } catch {}
+    setAddonsLoading(false)
+  }
+
+  const fetchPromos = async () => {
+    setPromosLoading(true)
+    try { const r = await api.get(`/events/${event.id}/promo-codes`); setPromos(r.data) } catch {}
+    setPromosLoading(false)
+  }
+
+  const handleToggleAddons = () => {
+    if (!showAddons) fetchAddons()
+    setShowAddons(v => !v)
+  }
+
+  const handleTogglePromos = () => {
+    if (!showPromos) fetchPromos()
+    setShowPromos(v => !v)
+  }
+
+  const handleCreateAddon = async () => {
+    if (!addonForm.name.trim() || addonForm.price === '') return
+    setAddonSaving(true)
+    try {
+      await api.post(`/events/${event.id}/addons`, {
+        name: addonForm.name.trim(),
+        description: addonForm.description.trim() || null,
+        price: Number(addonForm.price),
+        maxQuantity: addonForm.maxQuantity ? Number(addonForm.maxQuantity) : null,
+      })
+      setAddonForm({ name: '', description: '', price: '', maxQuantity: '' })
+      fetchAddons()
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to create add-on')
+    }
+    setAddonSaving(false)
+  }
+
+  const handleDeleteAddon = async (addonId) => {
+    if (!window.confirm('Delete this add-on?')) return
+    try { await api.delete(`/events/${event.id}/addons/${addonId}`); fetchAddons() } catch {}
+  }
+
+  const handleCreatePromo = async () => {
+    if (!promoForm.code.trim() || !promoForm.discountValue) return
+    setPromoSaving(true)
+    try {
+      await api.post(`/events/${event.id}/promo-codes`, {
+        code: promoForm.code.trim(),
+        discountType: promoForm.discountType,
+        discountValue: Number(promoForm.discountValue),
+        maxUses: promoForm.maxUses ? Number(promoForm.maxUses) : null,
+        expiresAt: promoForm.expiresAt || null,
+      })
+      setPromoForm({ code: '', discountType: 'pct', discountValue: '', maxUses: '', expiresAt: '' })
+      fetchPromos()
+    } catch (e) {
+      alert(e.response?.data?.message || 'Failed to create promo code')
+    }
+    setPromoSaving(false)
+  }
+
+  const handleDeletePromo = async (codeId) => {
+    if (!window.confirm('Delete this promo code?')) return
+    try { await api.delete(`/events/${event.id}/promo-codes/${codeId}`); fetchPromos() } catch {}
+  }
 
   const handleCancel = async () => {
     if (window.confirm('Are you sure you want to cancel this event? This will stop further bookings.')) {
@@ -452,7 +535,8 @@ function HostedEventCard({ event, refreshProfile }) {
         await dispatch(cancelEvent(event.id)).unwrap()
         refreshProfile()
       } catch (err) {
-        alert(err.message || 'Failed to cancel event')
+        const msg = err?.message || err?.data?.message || 'Failed to cancel event'
+        alert(msg)
       }
     }
   }
@@ -463,98 +547,197 @@ function HostedEventCard({ event, refreshProfile }) {
         await dispatch(deleteEvent(event.id)).unwrap()
         refreshProfile()
       } catch (err) {
-        alert(err.message || 'Failed to delete event')
+        const msg = err?.message || err?.data?.message || 'Failed to delete event'
+        alert(msg)
       }
     }
   }
 
+  const INPUT_SM = 'w-full px-3 py-2 text-sm rounded-lg bg-neutral-800/60 border border-neutral-600/50 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 transition'
+
   return (
-    <div className={`rounded-xl border p-5 transition ${
-      isPast
-        ? 'bg-neutral-800/30 border-neutral-700/30'
-        : 'bg-neutral-800/60 border-neutral-700/50 hover:border-emerald-500/30'
+    <div className={`rounded-xl border transition ${
+      isPast ? 'bg-neutral-800/30 border-neutral-700/30' : 'bg-neutral-800/60 border-neutral-700/50 hover:border-emerald-500/30'
     }`}>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-lg border ${
-            isPast
-              ? 'bg-neutral-700/30 border-neutral-600/30'
-              : 'bg-emerald-500/10 border-emerald-500/25'
-          }`}>
-            {event.event_type === 'SEATED' ? '🏟️' : '🎪'}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-semibold text-neutral-100 truncate">{event.name}</h3>
-              {isCancelled && (
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/25">
-                  Cancelled
-                </span>
-              )}
+      <div className="p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
+            <div className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-lg border ${
+              isPast ? 'bg-neutral-700/30 border-neutral-600/30' : 'bg-emerald-500/10 border-emerald-500/25'
+            }`}>
+              {event.event_type === 'SEATED' ? '🏟️' : '🎪'}
             </div>
-            <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-400">
-              <span>📅 {formatDate(event.date)}</span>
-              <span className="capitalize">• {event.event_type?.toLowerCase()}</span>
-              {event.total_capacity && <span>• {event.total_capacity} capacity</span>}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-semibold text-neutral-100 truncate">{event.name}</h3>
+                {isCancelled && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/25">
+                    Cancelled
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-400">
+                <span>📅 {formatDate(event.date)}</span>
+                <span className="capitalize">• {event.event_type?.toLowerCase()}</span>
+                {event.total_capacity && <span>• {event.total_capacity} capacity</span>}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 mt-4 sm:mt-0">
+            <div className="text-right text-sm sm:mr-2">
+              <p className="text-neutral-400">Normal: <span className="text-white font-medium">{formatCurrency(event.price_normal)}</span></p>
+              <p className="text-neutral-400">Premium: <span className="text-amber-400 font-medium">{formatCurrency(event.price_premium)}</span></p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {isPast ? (
+                <span className="px-3 py-1 rounded-lg bg-neutral-700/50 text-neutral-500 text-xs font-medium">Ended</span>
+              ) : isCancelled ? (
+                <button onClick={handleDelete} className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-semibold rounded-lg transition border border-red-500/20">
+                  Delete
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-neutral-700/50 hover:bg-neutral-600/50 text-neutral-200 text-xs font-semibold rounded-lg transition border border-neutral-600/50">
+                    Edit
+                  </button>
+                  <button onClick={handleCancel} className="px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-xs font-semibold rounded-lg transition border border-amber-500/20">
+                    Cancel
+                  </button>
+                  <Link to={`/events/${event.id}/booking`} className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-semibold rounded-lg transition border border-emerald-500/20">
+                    Manage
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 mt-4 sm:mt-0">
-          <div className="text-right text-sm sm:mr-2">
-            <p className="text-neutral-400">Normal: <span className="text-white font-medium">{formatCurrency(event.price_normal)}</span></p>
-            <p className="text-neutral-400">Premium: <span className="text-amber-400 font-medium">{formatCurrency(event.price_premium)}</span></p>
+        {/* Monetization tools row */}
+        {!isPast && (
+          <div className="mt-4 pt-4 border-t border-neutral-700/40 flex flex-wrap gap-2">
+            <button
+              onClick={handleToggleAddons}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
+                showAddons ? 'bg-violet-500/20 text-violet-300 border-violet-500/30' : 'bg-neutral-700/40 text-neutral-400 hover:text-neutral-200 border-neutral-600/40'
+              }`}
+            >
+              ✨ Add-ons {addons.length > 0 && `(${addons.length})`}
+            </button>
+            <button
+              onClick={handleTogglePromos}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border transition ${
+                showPromos ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-neutral-700/40 text-neutral-400 hover:text-neutral-200 border-neutral-600/40'
+              }`}
+            >
+              🏷 Promo Codes {promos.length > 0 && `(${promos.length})`}
+            </button>
           </div>
-          
-          <div className="flex flex-wrap items-center gap-2">
-            {isPast ? (
-              <span className="px-3 py-1 rounded-lg bg-neutral-700/50 text-neutral-500 text-xs font-medium">Ended</span>
-            ) : isCancelled ? (
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-semibold rounded-lg transition border border-red-500/20"
-              >
-                Delete
+        )}
+      </div>
+
+      {/* Add-ons Panel */}
+      {showAddons && (
+        <div className="mx-5 mb-5 rounded-xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
+          <div className="px-4 py-3 border-b border-violet-500/15 flex items-center gap-2">
+            <span className="text-sm font-semibold text-violet-300">✨ Manage Add-ons</span>
+            {addonsLoading && <span className="text-xs text-neutral-500 ml-auto animate-pulse">Loading…</span>}
+          </div>
+          <div className="p-4 space-y-3">
+            {/* Existing addons */}
+            {addons.map(a => (
+              <div key={a.id} className="flex items-center justify-between gap-3 p-3 rounded-lg bg-neutral-800/60 border border-neutral-700/40 text-sm">
+                <div>
+                  <p className="text-neutral-200 font-medium">{a.name}</p>
+                  {a.description && <p className="text-xs text-neutral-400 mt-0.5">{a.description}</p>}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-violet-400 font-bold">{formatCurrency(a.price)}</p>
+                  {a.max_quantity && <p className="text-xs text-neutral-500">Max: {a.max_quantity}</p>}
+                </div>
+                <button onClick={() => handleDeleteAddon(a.id)} className="text-neutral-500 hover:text-red-400 transition text-xs ml-1">✕</button>
+              </div>
+            ))}
+
+            {/* Create new add-on */}
+            <div className="pt-2 border-t border-violet-500/15 grid grid-cols-2 gap-2">
+              <input value={addonForm.name} onChange={e => setAddonForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Add-on name *" className={`${INPUT_SM} col-span-2`} />
+              <input value={addonForm.description} onChange={e => setAddonForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="Description (optional)" className={`${INPUT_SM} col-span-2`} />
+              <input type="number" value={addonForm.price} onChange={e => setAddonForm(f => ({ ...f, price: e.target.value }))}
+                placeholder="Price (₹) *" className={INPUT_SM} min={0} />
+              <input type="number" value={addonForm.maxQuantity} onChange={e => setAddonForm(f => ({ ...f, maxQuantity: e.target.value }))}
+                placeholder="Max qty (optional)" className={INPUT_SM} min={1} />
+              <button onClick={handleCreateAddon} disabled={addonSaving || !addonForm.name || addonForm.price === ''}
+                className="col-span-2 py-2 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 text-violet-300 text-xs font-semibold border border-violet-500/25 disabled:opacity-40 transition">
+                {addonSaving ? 'Saving…' : '+ Add Add-on'}
               </button>
-            ) : (
-              <>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 bg-neutral-700/50 hover:bg-neutral-600/50 text-neutral-200 text-xs font-semibold rounded-lg transition border border-neutral-600/50"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="px-4 py-2 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-xs font-semibold rounded-lg transition border border-amber-500/20"
-                >
-                  Cancel
-                </button>
-                <Link
-                  to={`/events/${event.id}/booking`}
-                  className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 text-xs font-semibold rounded-lg transition border border-emerald-500/20"
-                >
-                  Manage
-                </Link>
-              </>
-            )}
+            </div>
           </div>
         </div>
-      </div>
-      
+      )}
+
+      {/* Promo Codes Panel */}
+      {showPromos && (
+        <div className="mx-5 mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
+          <div className="px-4 py-3 border-b border-emerald-500/15 flex items-center gap-2">
+            <span className="text-sm font-semibold text-emerald-300">🏷 Manage Promo Codes</span>
+            {promosLoading && <span className="text-xs text-neutral-500 ml-auto animate-pulse">Loading…</span>}
+          </div>
+          <div className="p-4 space-y-3">
+            {/* Existing promos */}
+            {promos.map(p => (
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-lg bg-neutral-800/60 border border-neutral-700/40 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-emerald-400 text-xs tracking-wider">{p.code}</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">
+                    {p.discount_type === 'pct' ? `${p.discount_value}% off` : `₹${p.discount_value} off`}
+                    {p.max_uses && ` • ${p.uses_count}/${p.max_uses} used`}
+                    {!p.max_uses && ` • ${p.uses_count} used`}
+                    {p.expires_at && ` • Expires ${formatDate(p.expires_at)}`}
+                  </p>
+                </div>
+                <button onClick={() => handleDeletePromo(p.id)} className="text-neutral-500 hover:text-red-400 transition text-xs shrink-0">✕</button>
+              </div>
+            ))}
+
+            {/* Create new promo */}
+            <div className="pt-2 border-t border-emerald-500/15 grid grid-cols-2 gap-2">
+              <input value={promoForm.code} onChange={e => setPromoForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
+                placeholder="Code (e.g. SUMMER20) *" className={`${INPUT_SM} col-span-2 uppercase`} />
+              <select value={promoForm.discountType} onChange={e => setPromoForm(f => ({ ...f, discountType: e.target.value }))}
+                className={INPUT_SM}>
+                <option value="pct">% Discount</option>
+                <option value="fixed">Fixed (₹) Discount</option>
+              </select>
+              <input type="number" value={promoForm.discountValue} onChange={e => setPromoForm(f => ({ ...f, discountValue: e.target.value }))}
+                placeholder={promoForm.discountType === 'pct' ? 'e.g. 20 (%)' : 'e.g. 500 (₹)'} className={INPUT_SM} min={0} />
+              <input type="number" value={promoForm.maxUses} onChange={e => setPromoForm(f => ({ ...f, maxUses: e.target.value }))}
+                placeholder="Max uses (optional)" className={INPUT_SM} min={1} />
+              <input type="date" value={promoForm.expiresAt} onChange={e => setPromoForm(f => ({ ...f, expiresAt: e.target.value }))}
+                className={INPUT_SM} />
+              <button onClick={handleCreatePromo} disabled={promoSaving || !promoForm.code || !promoForm.discountValue}
+                className="col-span-2 py-2 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 text-xs font-semibold border border-emerald-500/25 disabled:opacity-40 transition">
+                {promoSaving ? 'Saving…' : '+ Create Promo Code'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isEditing && (
-        <EditEventModal 
-          event={event} 
-          onClose={() => setIsEditing(false)} 
-          onSuccess={() => {
-            setIsEditing(false)
-            refreshProfile()
-          }}
+        <EditEventModal
+          event={event}
+          onClose={() => setIsEditing(false)}
+          onSuccess={() => { setIsEditing(false); refreshProfile() }}
         />
       )}
     </div>
   )
 }
+
 
 function EditEventModal({ event, onClose, onSuccess }) {
   const dispatch = useDispatch()

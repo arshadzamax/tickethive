@@ -13,6 +13,8 @@ import adminRoutes from './routes/admin.routes.js'
 import eventRoutes from './routes/event.routes.js'
 import venueRoutes from './routes/venue.routes.js'
 import profileRoutes from './routes/profile.routes.js'
+import addonRoutes from './routes/addon.routes.js'
+import promoRoutes from './routes/promo.routes.js'
 import { initSocket } from './websocket/socket.js'
 import redis from './config/redis.js'
 import logger from './utils/logger.js'
@@ -52,6 +54,8 @@ app.use('/api', adminRoutes)
 app.use('/api', venueRoutes)
 app.use('/api', eventRoutes)
 app.use('/api', profileRoutes)
+app.use('/api', addonRoutes)
+app.use('/api', promoRoutes)
 
 /* =============================
    Health Check (Production Ready)

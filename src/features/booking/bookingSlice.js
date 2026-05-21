@@ -19,9 +19,16 @@ export const releaseBooking = createAsyncThunk('booking/release', async ({ event
   }
 })
 
-export const createGroupBooking = createAsyncThunk('booking/createGroup', async ({ eventId, bookingItems, groupLockId }, { rejectWithValue }) => {
+export const createGroupBooking = createAsyncThunk('booking/createGroup', async ({ eventId, bookingItems, groupLockId, addonItems, promoCode }, { rejectWithValue }) => {
   try {
-    const res = await api.post('/group-bookings', { eventId, bookingItems, groupLockId, paymentStatus: 'pending' })
+    const res = await api.post('/group-bookings', {
+      eventId,
+      bookingItems,
+      groupLockId,
+      paymentStatus: 'pending',
+      addonItems: addonItems || [],
+      promoCode: promoCode || null,
+    })
     return res.data
   } catch (e) {
     return rejectWithValue(e.response?.data || { message: 'Failed to create group booking' })
@@ -49,7 +56,13 @@ const initialState = {
   creatingStatus: 'idle',
   currentGroupBooking: null,
   totalPrice: 0,
-  eventType: null // 'SEATED' or 'GENERAL'
+  eventType: null, // 'SEATED' or 'GENERAL'
+
+  // Add-ons & Promo
+  addonItems: [], // [{ addonId, name, quantity, pricePerUnit }]
+  promoCode: '',
+  promoValidation: null, // { valid, discountType, discountValue, code } | null
+  discountAmount: 0,
 }
 
 const bookingSlice = createSlice({
@@ -107,7 +120,49 @@ const bookingSlice = createSlice({
       state.creatingStatus = 'idle'
       state.currentGroupBooking = null
       state.error = null
-    }
+      state.addonItems = []
+      state.promoCode = ''
+      state.promoValidation = null
+      state.discountAmount = 0
+    },
+
+    // Set an add-on quantity (0 = remove)
+    setAddonItem: (state, action) => {
+      const { addonId, name, quantity, pricePerUnit } = action.payload
+      const existing = state.addonItems.findIndex(a => a.addonId === addonId)
+      if (quantity <= 0) {
+        if (existing !== -1) state.addonItems.splice(existing, 1)
+      } else if (existing !== -1) {
+        state.addonItems[existing] = { addonId, name, quantity, pricePerUnit }
+      } else {
+        state.addonItems.push({ addonId, name, quantity, pricePerUnit })
+      }
+    },
+
+    // Set promo code input
+    setPromoCode: (state, action) => {
+      state.promoCode = action.payload
+    },
+
+    // Set promo validation result
+    setPromoValidation: (state, action) => {
+      state.promoValidation = action.payload
+      if (!action.payload || !action.payload.valid) {
+        state.discountAmount = 0
+      }
+    },
+
+    // Compute discount from ticket subtotal
+    applyDiscount: (state, action) => {
+      const { ticketSubtotal } = action.payload
+      const promo = state.promoValidation
+      if (!promo || !promo.valid) { state.discountAmount = 0; return }
+      if (promo.discountType === 'pct') {
+        state.discountAmount = Math.round((ticketSubtotal * promo.discountValue / 100) * 100) / 100
+      } else {
+        state.discountAmount = Math.min(promo.discountValue, ticketSubtotal)
+      }
+    },
   },
   extraReducers: builder => {
     builder
@@ -176,7 +231,11 @@ export const {
   clearTicketSelection,
   setEventType,
   setTotalPrice,
-  resetBooking
+  resetBooking,
+  setAddonItem,
+  setPromoCode,
+  setPromoValidation,
+  applyDiscount,
 } = bookingSlice.actions
 
 export default bookingSlice.reducer

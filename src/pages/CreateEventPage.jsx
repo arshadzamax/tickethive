@@ -30,6 +30,7 @@ export default function CreateEventPage() {
         priceNormal: 100,
         pricePremium: 150,
     })
+    const [pricingRules, setPricingRules] = useState([])
     const [errors, setErrors] = useState({})
     const [success, setSuccess] = useState(null)
 
@@ -74,6 +75,7 @@ export default function CreateEventPage() {
             venueId: form.venueId,
             priceNormal: Number(form.priceNormal),
             pricePremium: Number(form.pricePremium),
+            pricingRules,
         }
 
         const result = await dispatch(createEvent(payload))
@@ -218,6 +220,59 @@ export default function CreateEventPage() {
                                     className={errors.pricePremium ? INPUT_ERR : INPUT} />
                                 {errors.pricePremium && <p className="mt-1.5 text-xs text-red-400">{errors.pricePremium}</p>}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Dynamic Pricing Rules */}
+                    <div className="rounded-xl border border-neutral-700/50 bg-neutral-800/30 p-5 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-base">📈</span>
+                            <h3 className="text-sm font-semibold text-neutral-200">Dynamic Pricing Rules</h3>
+                            <span className="ml-auto text-xs text-neutral-500">Optional</span>
+                        </div>
+                        <p className="text-xs text-neutral-400">Rules are evaluated at booking time and applied multiplicatively.</p>
+
+                        {/* Existing rules */}
+                        <div className="space-y-2">
+                            {pricingRules.map((rule, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-neutral-700/40 border border-neutral-600/40 text-sm">
+                                    {rule.type === 'surge' ? (
+                                        <span className="text-red-300">🔥 Surge: +{rule.increase_pct}% when {rule.threshold}% sold</span>
+                                    ) : (
+                                        <span className="text-emerald-300">🐦 Early bird: −{rule.discount_pct}% until {rule.ends_at?.slice(0, 10)}</span>
+                                    )}
+                                    <button type="button" onClick={() => setPricingRules(r => r.filter((_, j) => j !== i))}
+                                        className="ml-auto text-neutral-500 hover:text-red-400 transition text-xs">✕ Remove</button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Add surge rule */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="button"
+                                onClick={() => {
+                                    const threshold = parseFloat(prompt('Surge threshold % sold (e.g. 80):', '80'))
+                                    const pct = parseFloat(prompt('Price increase % (e.g. 15):', '15'))
+                                    if (!isNaN(threshold) && !isNaN(pct) && threshold > 0 && pct > 0) {
+                                        setPricingRules(r => [...r, { type: 'surge', threshold, increase_pct: pct }])
+                                    }
+                                }}
+                                className="px-4 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/25 text-xs font-medium transition flex items-center justify-center gap-2"
+                            >
+                                🔥 Add Surge Rule
+                            </button>
+                            <button type="button"
+                                onClick={() => {
+                                    const date = prompt('Early bird ends on (YYYY-MM-DD):', new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10))
+                                    const pct = parseFloat(prompt('Discount % (e.g. 20):', '20'))
+                                    if (date && !isNaN(pct) && pct > 0 && pct <= 100) {
+                                        setPricingRules(r => [...r, { type: 'early_bird', ends_at: date + 'T23:59:59Z', discount_pct: pct }])
+                                    }
+                                }}
+                                className="px-4 py-2.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/25 text-xs font-medium transition flex items-center justify-center gap-2"
+                            >
+                                🐦 Add Early Bird Rule
+                            </button>
                         </div>
                     </div>
 

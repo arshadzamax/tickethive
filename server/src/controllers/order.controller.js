@@ -1,6 +1,9 @@
 import * as orderRepo from '../repositories/order.repo.js'
 import * as bookingStrategy from '../services/bookingStrategy.service.js'
 import * as groupLockService from '../services/groupLock.service.js'
+import * as addonRepo from '../repositories/addon.repo.js'
+import * as promoRepo from '../repositories/promo.repo.js'
+import { getClient } from '../config/db.js'
 import ApiError from '../utils/ApiError.js'
 
 export async function listOrders(req, res, next) {
@@ -68,12 +71,21 @@ export async function releaseBooking(req, res, next) {
 export async function createGroupBooking(req, res, next) {
   try {
     const userId = req.user.id
-    const { eventId, bookingItems, groupLockId, paymentStatus } = req.body
+    const { eventId, bookingItems, groupLockId, paymentStatus, addonItems, promoCode } = req.body
 
     if (!eventId) throw new ApiError(400, 'Event ID is required')
     if (!bookingItems) throw new ApiError(400, 'Booking items required')
 
-    // Create the group order
+    // --- Validate promo code upfront (before any DB writes) ---
+    let promoValidation = null
+    if (promoCode) {
+      promoValidation = await promoRepo.validatePromoCode(eventId, promoCode)
+      if (!promoValidation.valid) {
+        throw new ApiError(400, promoValidation.reason)
+      }
+    }
+
+    // Create the core group booking (seats/tickets)
     const result = await bookingStrategy.bookingService.createGroupBooking(
       eventId,
       userId,
@@ -81,12 +93,58 @@ export async function createGroupBooking(req, res, next) {
       paymentStatus || 'pending'
     )
 
+    // --- Post-creation: add-ons + promo in a single transaction ---
+    if ((addonItems?.length > 0) || promoValidation) {
+      const client = await getClient()
+      try {
+        await client.query('BEGIN')
+
+        let addonTotal = 0
+        let discountAmount = 0
+
+        // Write add-ons
+        if (addonItems?.length > 0) {
+          addonTotal = await addonRepo.createOrderAddons(client, result.groupBookingId, addonItems)
+        }
+
+        // Apply promo discount to ticket subtotal only
+        if (promoValidation) {
+          const ticketSubtotal = Number(result.totalAmount)
+          if (promoValidation.discountType === 'pct') {
+            discountAmount = Math.round((ticketSubtotal * promoValidation.discountValue / 100) * 100) / 100
+          } else {
+            discountAmount = Math.min(promoValidation.discountValue, ticketSubtotal)
+          }
+          await promoRepo.incrementPromoUse(client, promoValidation.promoId)
+        }
+
+        const newTotal = Math.max(0, Number(result.totalAmount) + addonTotal - discountAmount)
+
+        // Update group_bookings with final total + promo metadata
+        await client.query(
+          `UPDATE group_bookings
+           SET total_amount=$1, promo_code=$2, discount_amount=$3
+           WHERE id=$4`,
+          [newTotal, promoCode?.toUpperCase() || null, discountAmount, result.groupBookingId]
+        )
+
+        await client.query('COMMIT')
+        result.totalAmount = newTotal
+        result.addonTotal = addonTotal
+        result.discountAmount = discountAmount
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
+    }
+
     // Release the lock if provided
     if (groupLockId) {
       try {
         await groupLockService.releaseGroupLock(groupLockId, userId)
       } catch (err) {
-        // Log but don't fail
         console.warn('Failed to release group lock', err)
       }
     }

@@ -4,15 +4,21 @@ import { setEventType } from './bookingSlice'
 import MultiSeatSelector from '../../components/booking/MultiSeatSelector'
 import GeneralTicketBooking from '../../components/booking/GeneralTicketBooking'
 import BookingCart from '../../components/booking/BookingCart'
+import AddonsPanel from './AddonsPanel'
 
-export default function BookingPanel({ event, eventId }) {
+export default function BookingPanel({ event, eventId, effectivePrices }) {
   const dispatch = useDispatch()
   const eventType = event?.event_type || 'SEATED'
   const booking = useSelector(state => state.booking)
+  const seatsLocked = booking.holdingStatus === 'success'
 
   useEffect(() => {
     dispatch(setEventType(eventType))
   }, [eventType, dispatch])
+
+  // Use effective prices if available, else fall back to event prices
+  const normalPrice = effectivePrices?.normalPrice ?? event?.price_normal
+  const premiumPrice = effectivePrices?.premiumPrice ?? event?.price_premium
 
   if (!event) {
     return (
@@ -26,28 +32,31 @@ export default function BookingPanel({ event, eventId }) {
     <div className="space-y-6 w-full">
       {/* Main Booking Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           {eventType === 'SEATED' ? (
             <MultiSeatSelector
               eventId={eventId}
               eventType={eventType}
-              premiumPrice={event.price_premium}
-              normalPrice={event.price_normal}
+              premiumPrice={premiumPrice}
+              normalPrice={normalPrice}
               premiumRows={event.premium_rows || []}
             />
           ) : (
             <GeneralTicketBooking
               event={event}
               eventType={eventType}
-              premiumPrice={event.price_premium}
-              normalPrice={event.price_normal}
+              premiumPrice={premiumPrice}
+              normalPrice={normalPrice}
             />
           )}
+
+          {/* Add-ons: shown only once seats/tickets are locked */}
+          {seatsLocked && <AddonsPanel eventId={eventId} />}
         </div>
 
         {/* Booking Cart Sidebar */}
         <div>
-          <BookingCart event={event} eventType={eventType} />
+          <BookingCart event={event} eventType={eventType} effectivePrices={effectivePrices} />
         </div>
       </div>
 
@@ -59,12 +68,13 @@ export default function BookingPanel({ event, eventId }) {
         </div>
       )}
 
-      {booking.holdingStatus === 'success' && (
-        <div className="p-4 bg-green-900 border border-green-700 rounded-lg text-green-200">
+      {seatsLocked && (
+        <div className="p-4 bg-emerald-900/50 border border-emerald-700/50 rounded-lg text-emerald-200">
           <p className="font-semibold">✓ Items Successfully Held</p>
-          <p className="text-sm">Your items are reserved for 5 minutes. Complete checkout now.</p>
+          <p className="text-sm">Your items are reserved for 5 minutes. Add extras above, then complete checkout.</p>
         </div>
       )}
     </div>
   )
 }
+
