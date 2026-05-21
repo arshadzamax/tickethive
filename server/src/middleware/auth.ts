@@ -1,14 +1,15 @@
+import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import ApiError from '../utils/ApiError.js'
 import env from '../config/env.js'
 
-export default function auth(req, res, next) {
+export default function auth(req: Request, res: Response, next: NextFunction) {
   // Try JWT Authorization header first
   const authHeader = req.header('Authorization')
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7)
     try {
-      const decoded = jwt.verify(token, env.jwtSecret)
+      const decoded = jwt.verify(token, env.jwtSecret as string) as any
       req.user = { id: decoded.id, role: decoded.role || 'user', email: decoded.email }
       return next()
     } catch {

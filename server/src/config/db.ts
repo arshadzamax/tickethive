@@ -10,7 +10,7 @@ const pool = new Pool({
   idleTimeoutMillis: 30000
 })
 
-pool.on('error', err => {
+pool.on('error', (err) => {
   logger.error('Unexpected PostgreSQL error', { err })
 })
 
@@ -18,7 +18,7 @@ export async function getClient() {
   return pool.connect()
 }
 
-export async function query(text, params) {
+export async function query(text: string, params?: any[]) {
   return pool.query(text, params)
 }
 

@@ -1,10 +1,11 @@
+import { Request, Response, NextFunction } from 'express'
 import ApiError from '../utils/ApiError.js'
 import logger from '../utils/logger.js'
 
 // eslint-disable-next-line no-unused-vars
-export default function errorHandler(err, req, res, next) {
+export default function errorHandler(err: any, req: Request, res: Response, next: NextFunction) {
   const status = err instanceof ApiError && err.statusCode ? err.statusCode : 500
-  const payload = {
+  const payload: any = {
     message: status === 500 ? 'Internal server error' : err.message
   }
   if (err instanceof ApiError && err.details) {

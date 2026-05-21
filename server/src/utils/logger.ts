@@ -1,6 +1,6 @@
 import env from '../config/env.js'
 
-function base(level, msg, meta) {
+function base(level: string, msg: string, meta: Record<string, any> = {}) {
   const payload = {
     level,
     msg,
@@ -12,14 +12,14 @@ function base(level, msg, meta) {
 }
 
 const logger = {
-  info(msg, meta = {}) {
+  info(msg: string, meta: Record<string, any> = {}) {
     if (env.logLevel === 'silent') return
     base('info', msg, meta)
   },
-  error(msg, meta = {}) {
+  error(msg: string, meta: Record<string, any> = {}) {
     base('error', msg, meta)
   },
-  warn(msg, meta = {}) {
+  warn(msg: string, meta: Record<string, any> = {}) {
     if (env.logLevel === 'silent') return
     base('warn', msg, meta)
   }

@@ -2,7 +2,19 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const env = {
+interface Env {
+  nodeEnv: string
+  port: number
+  databaseUrl: string | undefined
+  redisUrl: string | undefined
+  corsOrigin: string | undefined
+  rateLimitWindowMs: number
+  rateLimitMax: number
+  logLevel: string
+  jwtSecret: string | undefined
+}
+
+const env: Env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: Number(process.env.PORT) || 4000,
   databaseUrl: process.env.DATABASE_URL,
