@@ -8,7 +8,7 @@ const cards = [
     { key: 'adminLocked', label: 'Admin Reserved', color: 'from-purple-500 to-violet-500', icon: '🛡️' }
 ]
 
-export default function StatsCards({ stats }) {
+export default function StatsCards({ stats }: { stats?: Record<string, number | undefined> }) {
     if (!stats) return null
 
     return (

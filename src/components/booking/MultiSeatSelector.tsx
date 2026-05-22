@@ -2,17 +2,21 @@ import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { selectSeat, deselectSeat, clearSelectedSeats } from '../../features/booking/bookingSlice'
 import { selectAllSeats, selectLoading } from '../../features/seats/seatSelectors'
+import type { MultiSeatSelectorProps } from '../../types'
+import type { RootState } from '../../app/store'
+import type { Seat } from '../../types'
 
-export default function MultiSeatSelector({ eventId, eventType, premiumPrice, normalPrice, premiumRows = [] }) {
+export default function MultiSeatSelector({ eventId, eventType, premiumPrice, normalPrice, premiumRows = [] }: MultiSeatSelectorProps) {
   const dispatch = useDispatch()
-  const seats = useSelector(selectAllSeats)
-  const seatsLoading = useSelector(selectLoading)
-  const selectedSeats = useSelector(state => state.booking.selectedItems)
-  const [filterCategory, setFilterCategory] = useState(null)
+  const seats = useSelector((state: RootState) => selectAllSeats(state))
+  const seatsLoading = useSelector((state: RootState) => selectLoading(state))
+  const selectedItems = useSelector((state: RootState) => state.booking.selectedItems)
+  const seatIds = Array.isArray(selectedItems) ? selectedItems : []
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
 
-  const isSeatSelected = (seatId) => selectedSeats.includes(seatId)
+  const isSeatSelected = (seatId: string | number): boolean => seatIds.includes(seatId)
 
-  const handleSeatClick = (seatId, category) => {
+  const handleSeatClick = (seatId: string | number, category: string): void => {
     if (isSeatSelected(seatId)) {
       dispatch(deselectSeat(seatId))
     } else {
@@ -25,24 +29,26 @@ export default function MultiSeatSelector({ eventId, eventType, premiumPrice, no
   }
 
   // Determine seat category based on premium rows config
-  const getSeatCategory = (seat) => {
+  const getSeatCategory = (seat?: Seat): string => {
+    if (!seat) return 'NORMAL'
     if (seat.category) return seat.category
-    if (premiumRows.includes(seat.row)) return 'PREMIUM'
+    if (premiumRows.includes(Number(seat.row))) return 'PREMIUM'
     return 'NORMAL'
   }
 
   // Calculate total price
-  const totalPrice = selectedSeats.reduce((sum, seatId) => {
-    const seat = seats.find(s => s.id === seatId)
-    const category = getSeatCategory(seat || {})
+  const totalPrice = seatIds.reduce((sum: number, seatId: string | number): number => {
+    const seat = seats.find((s: Seat) => s.id === seatId)
+    const category = getSeatCategory(seat)
     const price = category === 'PREMIUM' ? Number(premiumPrice) : Number(normalPrice)
     return sum + price
   }, 0)
 
   // Group seats by row
-  const seatsByRow = seats.reduce((acc, seat) => {
-    if (!acc[seat.row]) acc[seat.row] = []
-    acc[seat.row].push(seat)
+  const seatsByRow = seats.reduce((acc: Record<string, Seat[]>, seat: Seat): Record<string, Seat[]> => {
+    const rowKey = String(seat.row ?? '0')
+    if (!acc[rowKey]) acc[rowKey] = []
+    acc[rowKey].push(seat)
     return acc
   }, {})
 
@@ -138,15 +144,15 @@ export default function MultiSeatSelector({ eventId, eventType, premiumPrice, no
                 <div key={row} className="flex items-center gap-4">
                   <span className="w-8 text-right text-slate-400 font-bold">Row {row}</span>
                   <div className="flex gap-1">
-                    {seatsByRow[row]
-                      .sort((a, b) => a.number - b.number)
+                    {(seatsByRow[row] ?? [])
+                      .sort((a, b) => Number(a.number ?? 0) - Number(b.number ?? 0))
                       .map(seat => {
                         const isSelected = isSeatSelected(seat.id)
                         const category = getSeatCategory(seat)
                         const isPremium = category === 'PREMIUM'
                         const isSold = seat.status === 'sold'
                         const isLocked = seat.status === 'locked'
-                        const isAdminLocked = seat.adminLocked || seat.admin_locked
+                        const isAdminLocked = Boolean(seat.adminLocked || seat['admin_locked'])
                         const isUnavailable = isSold || isLocked || isAdminLocked
                         const showSeat = !filterCategory || category === filterCategory
 
@@ -187,12 +193,12 @@ export default function MultiSeatSelector({ eventId, eventType, premiumPrice, no
       <div className="bg-gradient-to-r from-slate-800 to-slate-700 p-6 rounded-lg border border-slate-600">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <p className="text-slate-300">Selected Seats: <span className="font-bold text-white">{selectedSeats.length}</span></p>
+            <p className="text-slate-300">Selected Seats: <span className="font-bold text-white">{seatIds.length}</span></p>
             <p className="text-slate-300 text-sm">Total: <span className="font-bold text-lg text-green-400">₹{totalPrice}</span></p>
           </div>
           <button
             onClick={handleClearAll}
-            disabled={selectedSeats.length === 0}
+            disabled={seatIds.length === 0}
             className="px-4 py-2 bg-slate-600 hover:bg-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded text-sm font-medium transition"
           >
             Clear All
@@ -200,11 +206,11 @@ export default function MultiSeatSelector({ eventId, eventType, premiumPrice, no
         </div>
 
         {/* Selected seats list */}
-        {selectedSeats.length > 0 && (
+        {seatIds.length > 0 && (
           <div className="mt-4 p-3 bg-slate-900 rounded text-slate-300 text-sm">
             <p className="font-semibold text-white mb-2">Your Seats:</p>
             <div className="flex flex-wrap gap-2">
-              {selectedSeats.map(seatId => {
+              {seatIds.map((seatId: string | number) => {
                 const seat = seats.find(s => s.id === seatId)
                 return (
                   <span key={seatId} className="bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium">

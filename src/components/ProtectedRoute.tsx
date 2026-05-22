@@ -1,9 +1,14 @@
-import React from 'react'
+import React, { type ReactNode } from 'react'
 import { useSelector } from 'react-redux'
 import { Navigate, useLocation } from 'react-router-dom'
-import { selectUser, selectAuthInitialized } from '../features/auth/authSlice.js'
+import { selectUser, selectAuthInitialized } from '../features/auth/authSlice'
 
-export default function ProtectedRoute({ children, requiredRole }) {
+interface ProtectedRouteProps {
+  children: ReactNode
+  requiredRole?: string
+}
+
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
     const user = useSelector(selectUser)
     const initialized = useSelector(selectAuthInitialized)
     const location = useLocation()

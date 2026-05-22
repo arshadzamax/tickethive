@@ -1,69 +1,70 @@
+import type { Request, Response, NextFunction } from 'express'
 import * as seatRepo from '../repositories/seat.repo.js'
 import ApiError from '../utils/ApiError.js'
+import { getParamAsNumber, getParamAsString } from '../utils/params.js'
 import { emitSeatsReset, emitSeatAdminLocked, emitGridResized } from '../websocket/socket.js'
+import { resizeGridSchema } from '../utils/schemas.js'
+import type { ApiResponse } from '../types/response.js'
 
-export async function resetAllSeats(req, res, next) {
+export async function resetAllSeats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const eventId = req.params.eventId
+        const eventId = getParamAsString(req, 'eventId')
         await seatRepo.resetAllSeats(eventId)
         emitSeatsReset(eventId)
-        res.json({ message: 'All seats reset to available' })
+        res.json({ success: true, data: { message: 'All seats reset to available' } } satisfies ApiResponse<any>)
     } catch (err) {
         next(err)
     }
 }
 
-export async function adminLockSeat(req, res, next) {
+export async function adminLockSeat(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const eventId = req.params.eventId
-        const seatId = Number(req.params.id)
+        const eventId = getParamAsString(req, 'eventId')
+        const seatId = getParamAsNumber(req, 'id')
         const seat = await seatRepo.adminLockSeat(seatId, eventId)
         if (!seat) {
             throw new ApiError(404, 'Seat not found')
         }
         emitSeatAdminLocked(seat, eventId)
-        res.json(seat)
+        res.json({ success: true, data: seat } satisfies ApiResponse<typeof seat>)
     } catch (err) {
         next(err)
     }
 }
 
-export async function adminUnlockSeat(req, res, next) {
+export async function adminUnlockSeat(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const eventId = req.params.eventId
-        const seatId = Number(req.params.id)
+        const eventId = getParamAsString(req, 'eventId')
+        const seatId = getParamAsNumber(req, 'id')
         const seat = await seatRepo.adminUnlockSeat(seatId, eventId)
         if (!seat) {
             throw new ApiError(404, 'Seat not found')
         }
         emitSeatAdminLocked(seat, eventId)
-        res.json(seat)
+        res.json({ success: true, data: seat } satisfies ApiResponse<typeof seat>)
     } catch (err) {
         next(err)
     }
 }
 
-export async function resizeGrid(req, res, next) {
+export async function resizeGrid(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const eventId = req.params.eventId
-        const { rows, cols } = req.body
-        if (!rows || !cols || rows < 1 || cols < 1 || rows > 50 || cols > 50) {
-            throw new ApiError(400, 'Rows and cols must be between 1 and 50')
-        }
+        const eventId = getParamAsString(req, 'eventId')
+        const { rows, cols } = resizeGridSchema.parse(req.body)
         await seatRepo.resizeGrid(eventId, rows, cols)
         emitGridResized(eventId)
         const stats = await seatRepo.getSeatStats(eventId)
-        res.json({ message: `Grid resized to ${rows}x${cols}`, stats })
+        res.json({ success: true, data: { message: `Grid resized to ${rows}x${cols}`, stats } } satisfies ApiResponse<any>)
     } catch (err) {
         next(err)
     }
 }
 
-export async function getStats(req, res, next) {
+export async function getStats(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-        const eventId = req.params.eventId
+        const eventId = getParamAsString(req, 'eventId')
         const stats = await seatRepo.getSeatStats(eventId)
-        res.json(stats)
+        res.json({ success: true, data: stats } satisfies ApiResponse<typeof stats>)
     } catch (err) {
         next(err)
     }

@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { Request, Response } from 'express'
 import http from 'http'
 import helmet from 'helmet'
 import cors from 'cors'
@@ -61,7 +61,7 @@ app.use('/api', promoRoutes)
    Health Check (Production Ready)
 ============================= */
 
-app.get('/health', async (req, res) => {
+app.get('/health', async (req: Request, res: Response) => {
   try {
     await redis.ping()
 
@@ -69,8 +69,8 @@ app.get('/health', async (req, res) => {
       status: 'ok',
       redis: 'connected'
     })
-  } catch (err) {
-    logger.error('Health check failed', { error: err.message })
+  } catch (err: unknown) {
+    logger.error('Health check failed', { error: err instanceof Error ? err.message : String(err) })
 
     res.status(500).json({
       status: 'error',

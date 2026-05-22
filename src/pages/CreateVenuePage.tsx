@@ -1,14 +1,26 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, type FormEvent } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
-import { createVenue, clearCreateError, selectCreatingVenue, selectCreateVenueError } from '../features/venues/venueSlice.js'
-import Layout from '../components/Layout.jsx'
+import { createVenue, clearCreateError, selectCreatingVenue, selectCreateVenueError } from '../features/venues/venueSlice'
+import type { Venue } from '../types'
+import Layout from '../components/Layout.tsx'
 
 const FIELD = 'block text-sm font-medium text-neutral-300 mb-1.5'
 const INPUT = 'w-full px-4 py-3 rounded-lg bg-neutral-800/60 border border-neutral-600/50 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition'
 const INPUT_ERR = 'w-full px-4 py-3 rounded-lg bg-neutral-800/60 border border-red-500/60 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/50 transition'
 
-function clamp(v, min, max) { return Math.max(min, Math.min(max, Number(v) || min)) }
+function clamp(v: string | number, min: number, max: number) { return Math.max(min, Math.min(max, Number(v) || min)) }
+
+type VenueForm = {
+  name: string
+  type: 'SEATED' | 'GENERAL'
+  rows: number
+  cols: number
+  defaultPremiumRows: number[]
+  totalCapacity: number
+}
+
+type VenueFormErrors = Partial<Record<keyof VenueForm, string>>
 
 export default function CreateVenuePage() {
     const dispatch = useDispatch()
@@ -16,25 +28,25 @@ export default function CreateVenuePage() {
     const creating = useSelector(selectCreatingVenue)
     const serverError = useSelector(selectCreateVenueError)
 
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<VenueForm>({
         name: '',
         type: 'SEATED',
         rows: 5,
         cols: 10,
-        defaultPremiumRows: [1, 2],
+        defaultPremiumRows: [],
         totalCapacity: 500,
     })
-    const [errors, setErrors] = useState({})
-    const [success, setSuccess] = useState(null)
+    const [errors, setErrors] = useState<VenueFormErrors>({})
+    const [success, setSuccess] = useState<Venue | null>(null)
 
     useEffect(() => { dispatch(clearCreateError()) }, [dispatch])
 
-    const set = (field, value) => {
+    const set = <K extends keyof VenueForm>(field: K, value: VenueForm[K]) => {
         setForm(f => ({ ...f, [field]: value }))
         setErrors(e => ({ ...e, [field]: undefined }))
     }
 
-    const togglePremiumRow = (row) => {
+    const togglePremiumRow = (row: number) => {
         setForm(f => {
             const current = f.defaultPremiumRows || []
             return {
@@ -46,28 +58,28 @@ export default function CreateVenuePage() {
         })
     }
 
-    const validate = () => {
-        const e = {}
+    const validate = (): VenueFormErrors => {
+        const e: VenueFormErrors = {}
         if (!form.name.trim()) e.name = 'Venue name is required'
         return e
     }
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const errs = validate()
         if (Object.keys(errs).length) { setErrors(errs); return }
 
-        const payload = {
+        const payload: Record<string, unknown> = {
             name: form.name.trim(),
             type: form.type,
         }
 
         if (form.type === 'SEATED') {
-            payload.rows = clamp(form.rows, 1, 20)
-            payload.cols = clamp(form.cols, 1, 30)
-            payload.defaultPremiumRows = form.defaultPremiumRows
+            payload['rows'] = clamp(form.rows, 1, 20)
+            payload['cols'] = clamp(form.cols, 1, 30)
+            payload['defaultPremiumRows'] = form.defaultPremiumRows
         } else {
-            payload.totalCapacity = clamp(form.totalCapacity, 50, 100000)
+            payload['totalCapacity'] = clamp(form.totalCapacity, 50, 100000)
         }
 
         const result = await dispatch(createVenue(payload))
@@ -139,7 +151,7 @@ export default function CreateVenuePage() {
                     <div>
                         <label className={FIELD}>Layout Type</label>
                         <div className="grid grid-cols-2 gap-3">
-                            {['SEATED', 'GENERAL'].map(type => (
+                            {(['SEATED', 'GENERAL'] as const).map(type => (
                                 <button key={type} type="button" onClick={() => set('type', type)}
                                     className={`p-4 rounded-xl border-2 transition text-left ${
                                         form.type === type

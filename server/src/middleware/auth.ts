@@ -9,7 +9,7 @@ export default function auth(req: Request, res: Response, next: NextFunction) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7)
     try {
-      const decoded = jwt.verify(token, env.jwtSecret as string) as any
+      const decoded = jwt.verify(token, env.jwtSecret) as any
       req.user = { id: decoded.id, role: decoded.role || 'user', email: decoded.email }
       return next()
     } catch {

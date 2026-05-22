@@ -1,39 +1,50 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import api from '../../services/apiClient.js'
+import api from '../../services/apiClient'
+import type { ApiErrorPayload, Venue, VenuesState } from '../../types'
 
-export const fetchVenues = createAsyncThunk(
+type VenueItem = Venue
+
+type VenuesThunkApiConfig = {
+  rejectValue: ApiErrorPayload
+}
+
+export const fetchVenues = createAsyncThunk<VenueItem[], void, VenuesThunkApiConfig>(
   'venues/fetchAll',
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/venues')
-      return response.data
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to fetch venues')
+      return response.data as VenueItem[]
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to fetch venues' })
     }
   }
 )
 
-export const createVenue = createAsyncThunk(
+export const createVenue = createAsyncThunk<VenueItem, unknown, VenuesThunkApiConfig>(
   'venues/create',
   async (venueData, { rejectWithValue }) => {
     try {
       const response = await api.post('/venues', venueData)
-      return response.data
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Failed to create venue')
+      return response.data as VenueItem
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to create venue' })
     }
   }
 )
 
+const initialState: VenuesState = {
+  list: [],
+  loading: false,
+  error: null,
+  creating: false,
+  createError: null,
+}
+
 const venueSlice = createSlice({
   name: 'venues',
-  initialState: {
-    list: [],
-    loading: false,
-    error: null,
-    creating: false,
-    createError: null,
-  },
+  initialState,
   reducers: {
     clearCreateError: (state) => {
       state.createError = null
@@ -51,7 +62,7 @@ const venueSlice = createSlice({
       })
       .addCase(fetchVenues.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload
+        state.error = action.payload?.message ?? 'Failed to fetch venues'
       })
       .addCase(createVenue.pending, (state) => {
         state.creating = true
@@ -63,17 +74,17 @@ const venueSlice = createSlice({
       })
       .addCase(createVenue.rejected, (state, action) => {
         state.creating = false
-        state.createError = action.payload
+        state.createError = action.payload?.message ?? 'Failed to create venue'
       })
   }
 })
 
 export const { clearCreateError } = venueSlice.actions
 
-export const selectAllVenues = state => state.venues.list
-export const selectVenuesLoading = state => state.venues.loading
-export const selectVenuesError = state => state.venues.error
-export const selectCreatingVenue = state => state.venues.creating
-export const selectCreateVenueError = state => state.venues.createError
+export const selectAllVenues = (state: { venues: VenuesState }) => state.venues.list
+export const selectVenuesLoading = (state: { venues: VenuesState }) => state.venues.loading
+export const selectVenuesError = (state: { venues: VenuesState }) => state.venues.error
+export const selectCreatingVenue = (state: { venues: VenuesState }) => state.venues.creating
+export const selectCreateVenueError = (state: { venues: VenuesState }) => state.venues.createError
 
 export default venueSlice.reducer

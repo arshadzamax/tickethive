@@ -1,7 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react'
 
-export default function ScrollReveal({ children, delay = 0, className = '' }) {
-    const ref = useRef(null)
+interface ScrollRevealProps {
+    children: React.ReactNode
+    delay?: number
+    className?: string
+}
+
+export default function ScrollReveal({ children, delay = 0, className = '' }: ScrollRevealProps) {
+    const ref = useRef<HTMLDivElement | null>(null)
     const [visible, setVisible] = useState(false)
 
     useEffect(() => {
@@ -9,7 +15,7 @@ export default function ScrollReveal({ children, delay = 0, className = '' }) {
         if (!el) return
         const observer = new IntersectionObserver(
             ([entry]) => {
-                if (entry.isIntersecting) {
+                if (entry?.isIntersecting) {
                     setVisible(true)
                     observer.unobserve(el)
                 }

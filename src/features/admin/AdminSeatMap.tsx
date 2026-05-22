@@ -1,17 +1,26 @@
 import React, { useMemo, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { selectAllSeats, selectLoading } from '../seats/seatSelectors.js'
-import { adminLockSeat, adminUnlockSeat } from './adminSlice.js'
+import { selectAllSeats, selectLoading } from '../seats/seatSelectors'
+import { adminLockSeat, adminUnlockSeat } from './adminSlice'
+import type { Seat } from '../../types'
+import type { RootState } from '../../app/store'
 
-function seatColor(seat) {
-    if (seat.admin_locked || seat.adminLocked) return '#a855f7' // purple for admin-locked
+function seatColor(seat: Seat) {
+    if (seat['admin_locked'] || seat.adminLocked) return '#a855f7' // purple for admin-locked
     if (seat.status === 'sold') return '#ef4444'
     if (seat.status === 'locked') return '#f59e0b'
     return '#22c55e'
 }
 
-function AdminSeatItem({ seat, cell, gap, onToggleLock }) {
-    const isAdminLocked = seat.admin_locked || seat.adminLocked
+type AdminSeatItemProps = {
+    seat: Seat
+    cell: number
+    gap: number
+    onToggleLock: (seat: Seat) => void
+}
+
+function AdminSeatItem({ seat, cell, gap, onToggleLock }: AdminSeatItemProps) {
+    const isAdminLocked = seat['admin_locked'] || seat.adminLocked
     const row = typeof seat.row === 'number' ? seat.row - 1 : 0
     const col = Number(seat.number) - 1
     const x = 20 + col * (cell + gap)
@@ -39,26 +48,27 @@ function AdminSeatItem({ seat, cell, gap, onToggleLock }) {
     )
 }
 
-export default function AdminSeatMap({ eventId }) {
+export default function AdminSeatMap({ eventId }: { eventId?: string | number }) {
+    if (!eventId) return null
     const dispatch = useDispatch()
-    const seats = useSelector(selectAllSeats)
-    const loading = useSelector(selectLoading)
+    const seats = useSelector((state: RootState) => selectAllSeats(state))
+    const loading = useSelector((state: RootState) => selectLoading(state))
 
     const cell = 24
     const gap = 8
 
     const dims = useMemo(() => {
         if (!seats.length) return { width: 800, height: 400 }
-        const rowCount = new Set(seats.map(s => s.row)).size
-        const colCount = Math.max(...seats.map(s => s.number))
+        const rowCount = new Set(seats.map(s => Number(s.row ?? 0))).size
+        const colCount = Math.max(0, ...seats.map(s => Number(s.number ?? 0)))
         return {
             width: 40 + colCount * (cell + gap),
             height: 40 + rowCount * (cell + gap)
         }
     }, [seats])
 
-    const onToggleLock = useCallback((seat) => {
-        const isAdminLocked = seat.admin_locked || seat.adminLocked
+    const onToggleLock = useCallback((seat: Seat) => {
+        const isAdminLocked = seat['admin_locked'] || seat.adminLocked
         if (isAdminLocked) {
             dispatch(adminUnlockSeat({ seatId: seat.id, eventId }))
         } else {

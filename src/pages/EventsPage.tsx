@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents, selectAllEvents, selectEventsLoading, selectEventsError } from '../features/events/eventSlice.js'
-import { selectUser, selectIsAdmin } from '../features/auth/authSlice.js'
-import Layout from '../components/Layout.jsx'
+import { fetchEvents, selectAllEvents, selectEventsLoading, selectEventsError } from '../features/events/eventSlice'
+import { selectUser, selectIsAdmin } from '../features/auth/authSlice'
+import type { Event } from '../types'
+import Layout from '../components/Layout.tsx'
 
 export default function EventsPage() {
     const dispatch = useDispatch()
@@ -18,7 +19,7 @@ export default function EventsPage() {
         dispatch(fetchEvents())
     }, [dispatch])
 
-    const handleEventClick = (eventId) => {
+    const handleEventClick = (eventId: string | number) => {
         if (!user) {
             navigate('/login', { state: { from: `/events/${eventId}/booking` } })
         } else {
@@ -26,8 +27,8 @@ export default function EventsPage() {
         }
     }
 
-    const formatDate = (dateStr) => {
-        const d = new Date(dateStr)
+    const formatDate = (dateStr: unknown) => {
+        const d = new Date(dateStr as string | number)
         return d.toLocaleDateString('en-US', {
             weekday: 'short',
             year: 'numeric',
@@ -59,13 +60,18 @@ export default function EventsPage() {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {events.map(event => {
-                        const isExpired = new Date(event.date) < new Date()
+                    {events.map((event) => {
+                        const eventDate = event.date as string | undefined
+                        const eventName = event.name as string | undefined
+                        const eventOrganiser = event.organiser as string | undefined
+                        const eventId = event.id
+
+                        const isExpired = eventDate ? new Date(eventDate) < new Date() : false
                         const canClick = !isExpired || isAdmin
                         return (
                             <button
-                                key={event.id}
-                                onClick={() => canClick && handleEventClick(event.id)}
+                                key={eventId}
+                                onClick={() => canClick && handleEventClick(eventId)}
                                 disabled={!canClick}
                                 className={`group relative overflow-hidden rounded-xl bg-neutral-800/60 border p-5 backdrop-blur-sm text-left transition-all ${isExpired ? 'border-neutral-700/30 opacity-55 cursor-not-allowed' : 'border-neutral-700/50 hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/10 hover:scale-[1.02] active:scale-[0.98]'}`}
                             >
@@ -75,7 +81,7 @@ export default function EventsPage() {
                                 <div className="space-y-3">
                                     <div className="flex items-start justify-between gap-2">
                                         <h3 className={`text-lg font-semibold transition-colors ${isExpired ? 'text-neutral-400' : 'text-neutral-100 group-hover:text-emerald-400'}`}>
-                                            {event.name}
+                                            {eventName}
                                         </h3>
                                         <div className="flex items-center gap-2 flex-shrink-0">
                                             {isExpired && (
@@ -89,12 +95,12 @@ export default function EventsPage() {
                                     <div className="space-y-1.5 text-sm text-neutral-400">
                                         <div className="flex items-center gap-2">
                                             <span>📅</span>
-                                            <span className={isExpired ? 'line-through text-neutral-500' : ''}>{formatDate(event.date)}</span>
+                                            <span className={isExpired ? 'line-through text-neutral-500' : ''}>{eventDate && formatDate(eventDate)}</span>
                                         </div>
-                                        {event.organiser && (
+                                        {eventOrganiser && (
                                             <div className="flex items-center gap-2">
                                                 <span>👤</span>
-                                                <span>{event.organiser}</span>
+                                                <span>{eventOrganiser}</span>
                                             </div>
                                         )}
                                     </div>

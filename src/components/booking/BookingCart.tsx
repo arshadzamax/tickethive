@@ -1,34 +1,38 @@
 import React, { useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
+import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   holdBooking, createGroupBooking, releaseBooking,
   setPromoCode, setPromoValidation, applyDiscount
 } from '../../features/booking/bookingSlice'
 import { selectAllSeats } from '../../features/seats/seatSelectors'
-import { useNavigate } from 'react-router-dom'
 import api from '../../services/apiClient'
+import type { BookingCartProps, BookingItems, AddonItem } from '../../types'
+import type { RootState } from '../../app/store'
 
-const fmt = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+const fmt = (n: number | null | undefined): string => `₹${Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
 
-export default function BookingCart({ event, eventType, effectivePrices }) {
-  const dispatch = useDispatch()
+export default function BookingCart({ event, eventType, effectivePrices }: BookingCartProps) {
+  const dispatch = useAppDispatch()
   const navigate = useNavigate()
-  const booking = useSelector(state => state.booking)
-  const seats = useSelector(selectAllSeats)
+  const booking = useAppSelector((state: RootState) => state.booking)
+  const seats = useAppSelector(selectAllSeats)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [promoInput, setPromoInput] = useState('')
   const [promoLoading, setPromoLoading] = useState(false)
   const [promoError, setPromoError] = useState('')
+  const selectedItems = Array.isArray(booking.selectedItems) ? booking.selectedItems : null
+  const selectedTicket = !Array.isArray(booking.selectedItems) ? booking.selectedItems : null
 
   // -- Price computation --
   const effectiveNormal = effectivePrices?.normalPrice ?? Number(event?.price_normal)
   const effectivePremium = effectivePrices?.premiumPrice ?? Number(event?.price_premium)
 
-  const calculateSeatedTotal = () => {
+  const calculateSeatedTotal = (): number => {
     if (eventType !== 'SEATED' || !Array.isArray(booking.selectedItems)) return 0
-    return booking.selectedItems.reduce((sum, seatId) => {
+    return booking.selectedItems.reduce((sum: number, seatId: string | number) => {
       const seat = seats.find(s => s.id === seatId)
-      const isPremium = seat?.category === 'PREMIUM' || (event?.premium_rows || []).includes(seat?.row)
+      const isPremium = seat?.category === 'PREMIUM' || (event?.premium_rows || []).includes(Number(seat?.row))
       return sum + (isPremium ? effectivePremium : effectiveNormal)
     }, 0)
   }
@@ -37,7 +41,7 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
     ? calculateSeatedTotal()
     : (booking.totalPrice || 0)
 
-  const addonSubtotal = booking.addonItems.reduce((s, a) => s + a.quantity * a.pricePerUnit, 0)
+  const addonSubtotal = booking.addonItems.reduce((s: number, a: AddonItem) => s + a.quantity * a.pricePerUnit, 0)
   const grandTotal = Math.max(0, ticketSubtotal + addonSubtotal - (booking.discountAmount || 0))
 
   // -- Promo code --
@@ -55,8 +59,9 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
         setPromoError(res.data.reason || 'Invalid code')
         dispatch(setPromoValidation(null))
       }
-    } catch (e) {
-      setPromoError(e.response?.data?.message || 'Failed to validate code')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      setPromoError(err.response?.data?.message || 'Failed to validate code')
     } finally {
       setPromoLoading(false)
     }
@@ -73,11 +78,14 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
   const handleHoldBooking = async () => {
     setIsSubmitting(true)
     try {
-      const bookingItems = eventType === 'SEATED'
-        ? { seats: booking.selectedItems }
-        : { quantity: booking.selectedItems.quantity, category: booking.selectedItems.category }
+      if (!eventType) return
+      const bookingItems: BookingItems = selectedItems
+        ? { seats: selectedItems }
+        : selectedTicket
+          ? { quantity: selectedTicket.quantity, category: selectedTicket.category }
+          : { quantity: 0, category: '' }
       await dispatch(holdBooking({ eventId: event.id, bookingItems })).unwrap()
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to hold booking:', err)
     } finally {
       setIsSubmitting(false)
@@ -87,9 +95,11 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
   const handleConfirmBooking = async () => {
     setIsSubmitting(true)
     try {
-      const bookingItems = eventType === 'SEATED'
-        ? { seats: booking.selectedItems }
-        : { quantity: booking.selectedItems.quantity, category: booking.selectedItems.category }
+      const bookingItems: BookingItems = selectedItems
+        ? { seats: selectedItems }
+        : selectedTicket
+          ? { quantity: selectedTicket.quantity, category: selectedTicket.category }
+          : { quantity: 0, category: '' }
 
       const result = await dispatch(createGroupBooking({
         eventId: event.id,
@@ -100,7 +110,7 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
       })).unwrap()
 
       navigate(`/booking-success/${result.groupBookingId}`)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to create booking:', err)
     } finally {
       setIsSubmitting(false)
@@ -108,8 +118,8 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
   }
 
   const hasSelection = eventType === 'SEATED'
-    ? Array.isArray(booking.selectedItems) && booking.selectedItems.length > 0
-    : booking.selectedItems?.quantity > 0
+    ? Boolean(selectedItems && selectedItems.length > 0)
+    : Boolean(selectedTicket?.quantity && selectedTicket.quantity > 0)
 
   const isLocked = !!booking.groupLockId
 
@@ -136,7 +146,7 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
         {/* Ticket lines */}
         <div className="space-y-2 pb-4 border-b border-neutral-700/50">
           {eventType === 'SEATED' ? (
-            booking.selectedItems.map(seatId => {
+            (selectedItems ?? []).map((seatId: string | number) => {
               const seat = seats.find(s => s.id === seatId)
               const isPremium = seat?.category === 'PREMIUM'
               return (
@@ -151,7 +161,7 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
             })
           ) : (
             <div className="flex justify-between text-sm">
-              <span className="text-neutral-300">{booking.selectedItems?.quantity}× {booking.selectedItems?.category?.toLowerCase()} ticket</span>
+              <span className="text-neutral-300">{selectedTicket?.quantity ?? 0}× {selectedTicket?.category?.toLowerCase() ?? 'ticket'} ticket</span>
               <span className="text-neutral-200 font-medium">{fmt(ticketSubtotal)}</span>
             </div>
           )}
@@ -251,13 +261,18 @@ export default function BookingCart({ event, eventType, effectivePrices }) {
               </button>
 
               <button
-                onClick={() => dispatch(releaseBooking({
-                  eventId: event.id,
-                  groupLockId: booking.groupLockId,
-                  bookingItems: eventType === 'SEATED'
-                    ? { seats: booking.selectedItems }
-                    : { quantity: booking.selectedItems.quantity, category: booking.selectedItems.category }
-                }))}
+                onClick={() => {
+                  const bookingItems: BookingItems = selectedItems
+                    ? { seats: selectedItems }
+                    : selectedTicket
+                      ? { quantity: selectedTicket.quantity, category: selectedTicket.category }
+                      : { quantity: 0, category: '' }
+                  dispatch(releaseBooking({
+                    eventId: event.id,
+                    groupLockId: booking.groupLockId,
+                    bookingItems,
+                  }))
+                }}
                 disabled={isSubmitting}
                 className="w-full py-2 rounded-xl bg-neutral-700/50 hover:bg-neutral-600/50 text-neutral-300 text-sm font-medium transition border border-neutral-600/50"
               >

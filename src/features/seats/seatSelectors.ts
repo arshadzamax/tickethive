@@ -1,11 +1,13 @@
 import { shallowEqual } from 'react-redux'
+import type { Seat } from '../../types'
+import type { RootState } from '../../app/store'
 
-export const selectSeatsState = state => state.seats
-export const selectAllSeats = state => state.seats.seats
-export const selectSeatById = (state, id) => state.seats.seats.find(s => s.id === id) || null
-export const selectSelectedSeat = state => state.seats.selectedSeat
-export const selectLoading = state => state.seats.loading
-export const selectConnectionStatus = state => state.seats.connectionStatus
+export const selectSeatsState = (state: RootState) => state.seats
+export const selectAllSeats = (state: RootState) => state.seats.seats
+export const selectSeatById = (state: RootState, id: string | number) => state.seats.seats.find((s: Seat) => s.id === id) || null
+export const selectSelectedSeat = (state: RootState) => state.seats.selectedSeat
+export const selectLoading = (state: RootState) => state.seats.loading
+export const selectConnectionStatus = (state: RootState) => state.seats.connectionStatus
 
 import { createSelector } from '@reduxjs/toolkit'
 
@@ -17,12 +19,13 @@ export const makeSelectSeatIds = () => createSelector(
 export const makeSelectSeatsByRow = () => createSelector(
   [selectAllSeats],
   seats => {
-    const rows = {}
+    const rows: Record<string, Seat[]> = {}
     for (const s of seats) {
-      if (!rows[s.row]) rows[s.row] = []
-      rows[s.row].push(s)
+      const rowKey = String(s.row ?? '0')
+      if (!rows[rowKey]) rows[rowKey] = []
+      rows[rowKey].push(s)
     }
-    Object.values(rows).forEach(arr => arr.sort((a, b) => a.number - b.number))
+    Object.values(rows).forEach(arr => arr.sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0)))
     return rows
   }
 )

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { GRID_ROWS, GRID_COLS } from './landingData.js'
+import { GRID_ROWS, GRID_COLS } from './landingData'
+
+type SeatState = 'sold' | 'locked' | 'available'
 
 export default function AnimatedSeatGrid() {
-    const [seats, setSeats] = useState(() =>
+    const [seats, setSeats] = useState<SeatState[]>(() =>
         Array.from({ length: GRID_ROWS * GRID_COLS }, () => {
             const r = Math.random()
             if (r < 0.22) return 'sold'
@@ -33,7 +35,7 @@ export default function AnimatedSeatGrid() {
     const width = GRID_COLS * (cell + gap)
     const height = GRID_ROWS * (cell + gap)
 
-    const seatColor = s => s === 'sold' ? '#ef4444' : s === 'locked' ? '#fbbf24' : '#22c55e'
+    const seatColor = (s: SeatState) => s === 'sold' ? '#ef4444' : s === 'locked' ? '#fbbf24' : '#22c55e'
 
     return (
         <div className="relative select-none">

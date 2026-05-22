@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import ScrollReveal from './ScrollReveal.jsx'
+import ScrollReveal from './ScrollReveal.tsx'
 
 export default function PortalSection() {
     return (

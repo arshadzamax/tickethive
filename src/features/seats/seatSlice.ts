@@ -1,32 +1,66 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import api from '../../services/apiClient.js'
-import { LOCK_DURATION_MS, SEAT_STATUS } from '../../utils/constants.js'
-import { normalizeSeat, normalizeSeats } from '../../utils/seatHelpers.js'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import api from '../../services/apiClient'
+import { LOCK_DURATION_MS, SEAT_STATUS } from '../../utils/constants'
+import { normalizeSeat, normalizeSeats } from '../../utils/seatHelpers'
+import type { ApiErrorPayload, SeatsState, Seat } from '../../types'
 
-export const fetchSeats = createAsyncThunk('seats/fetchSeats', async (eventId) => {
-  const res = await api.get(`/events/${eventId}/seats`)
-  return res.data
-})
+type SeatActionPayload = string | number
 
-export const holdSeat = createAsyncThunk('seats/holdSeat', async ({ seatId, eventId, effectiveUserId }, { rejectWithValue }) => {
-  try {
-    const res = await api.post(`/events/${eventId}/seats/${seatId}/hold`)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Hold failed' })
+type FetchSeatsThunkApiConfig = {
+  rejectValue: ApiErrorPayload
+}
+
+type HoldSeatPayload = {
+  seatId: string | number
+  eventId: string | number
+  effectiveUserId: string | number
+}
+
+type ReleaseSeatPayload = {
+  seatId: string | number
+  eventId: string | number
+}
+
+export const fetchSeats = createAsyncThunk<Seat[], string | number, FetchSeatsThunkApiConfig>(
+  'seats/fetchSeats',
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await api.get(`/events/${eventId}/seats`)
+      return normalizeSeats(res.data as unknown[]) as Seat[]
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to fetch seats' })
+    }
   }
-})
+)
 
-export const releaseSeat = createAsyncThunk('seats/releaseSeat', async ({ seatId, eventId }, { rejectWithValue }) => {
-  try {
-    const res = await api.post(`/events/${eventId}/seats/${seatId}/release`)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Release failed' })
+export const holdSeat = createAsyncThunk<Seat, HoldSeatPayload, FetchSeatsThunkApiConfig>(
+  'seats/holdSeat',
+  async ({ seatId, eventId }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/events/${eventId}/seats/${seatId}/hold`)
+      return normalizeSeat(res.data as unknown) as Seat
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Hold failed' })
+    }
   }
-})
+)
 
-const initialState = {
+export const releaseSeat = createAsyncThunk<Seat, ReleaseSeatPayload, FetchSeatsThunkApiConfig>(
+  'seats/releaseSeat',
+  async ({ seatId, eventId }, { rejectWithValue }) => {
+    try {
+      const res = await api.post(`/events/${eventId}/seats/${seatId}/release`)
+      return normalizeSeat(res.data as unknown) as Seat
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Release failed' })
+    }
+  }
+)
+
+const initialState: SeatsState = {
   seats: [],
   selectedSeat: null,
   loading: false,
@@ -38,35 +72,36 @@ const seatsSlice = createSlice({
   name: 'seats',
   initialState,
   reducers: {
-    applySeatLocked(state, action) {
-      const seat = normalizeSeat(action.payload)
+    applySeatLocked(state, action: PayloadAction<unknown>) {
+      const seat = normalizeSeat(action.payload) as Seat
       const idx = state.seats.findIndex(s => s.id === seat.id)
       if (idx !== -1) state.seats[idx] = seat
       if (state.selectedSeat && state.selectedSeat.id === seat.id) state.selectedSeat = seat
     },
-    applySeatSold(state, action) {
-      const seat = normalizeSeat(action.payload)
+    applySeatSold(state, action: PayloadAction<unknown>) {
+      const seat = normalizeSeat(action.payload) as Seat
       const idx = state.seats.findIndex(s => s.id === seat.id)
       if (idx !== -1) state.seats[idx] = seat
       if (state.selectedSeat && state.selectedSeat.id === seat.id) state.selectedSeat = seat
     },
-    applySeatReleased(state, action) {
-      const seat = normalizeSeat(action.payload)
+    applySeatReleased(state, action: PayloadAction<unknown>) {
+      const seat = normalizeSeat(action.payload) as Seat
       const idx = state.seats.findIndex(s => s.id === seat.id)
       if (idx !== -1) state.seats[idx] = seat
       if (state.selectedSeat && state.selectedSeat.id === seat.id) state.selectedSeat = seat
     },
-    setSelectedSeat(state, action) {
+    setSelectedSeat(state, action: PayloadAction<Seat | null>) {
       state.selectedSeat = action.payload
     },
-    setConnectionStatus(state, action) {
+    setConnectionStatus(state, action: PayloadAction<SeatsState['connectionStatus']>) {
       state.connectionStatus = action.payload
     },
-    expireSeatLock(state, action) {
+    expireSeatLock(state, action: PayloadAction<string | number>) {
       const seatId = action.payload
       const idx = state.seats.findIndex(s => s.id === seatId)
       if (idx !== -1) {
         const s = state.seats[idx]
+        if (!s) return
         if (s.status === SEAT_STATUS.locked && s.lockExpiresAt && Date.now() >= s.lockExpiresAt) {
           state.seats[idx] = { ...s, status: SEAT_STATUS.available, lockedBy: null, lockExpiresAt: null }
         }
@@ -81,12 +116,11 @@ const seatsSlice = createSlice({
       })
       .addCase(fetchSeats.fulfilled, (state, action) => {
         state.loading = false
-        // normalize server response to camelCase and numeric timestamps
-        state.seats = normalizeSeats(action.payload)
+        state.seats = action.payload
       })
       .addCase(fetchSeats.rejected, (state, action) => {
         state.loading = false
-        state.error = action.error?.message || 'Failed to load seats'
+        state.error = action.payload?.message || 'Failed to load seats'
       })
 
       .addCase(holdSeat.pending, (state, action) => {
@@ -94,19 +128,21 @@ const seatsSlice = createSlice({
         const idx = state.seats.findIndex(s => s.id === seatId)
         if (idx !== -1) {
           const s = state.seats[idx]
+          if (!s) return
           if (s.status === SEAT_STATUS.available) {
             state.seats[idx] = {
               ...s,
               status: SEAT_STATUS.locked,
-              lockedBy: effectiveUserId,
+              lockedBy: String(effectiveUserId),
               lockExpiresAt: Date.now() + LOCK_DURATION_MS
             }
-            state.selectedSeat = state.seats[idx]
+            const selected = state.seats[idx]
+            if (selected) state.selectedSeat = selected
           }
         }
       })
       .addCase(holdSeat.fulfilled, (state, action) => {
-        const serverSeat = normalizeSeat(action.payload)
+        const serverSeat = normalizeSeat(action.payload) as Seat
         const idx = state.seats.findIndex(s => s.id === serverSeat.id)
         if (idx !== -1) state.seats[idx] = serverSeat
         state.selectedSeat = serverSeat
@@ -116,13 +152,14 @@ const seatsSlice = createSlice({
         const idx = state.seats.findIndex(s => s.id === seatId)
         if (idx !== -1) {
           const s = state.seats[idx]
+          if (!s) return
           state.seats[idx] = { ...s, status: SEAT_STATUS.available, lockedBy: null, lockExpiresAt: null }
         }
         state.error = action.payload?.message || 'Hold failed'
       })
 
       .addCase(releaseSeat.fulfilled, (state, action) => {
-        const seat = normalizeSeat(action.payload)
+        const seat = normalizeSeat(action.payload) as Seat
         const idx = state.seats.findIndex(s => s.id === seat.id)
         if (idx !== -1) state.seats[idx] = seat
         if (state.selectedSeat && state.selectedSeat.id === seat.id) state.selectedSeat = seat

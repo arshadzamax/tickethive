@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, type FormEvent } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
-import { createEvent, clearCreateError, selectCreating, selectCreateError } from '../features/events/eventSlice.js'
-import { fetchVenues, selectAllVenues, selectVenuesLoading } from '../features/venues/venueSlice.js'
-import { selectUser } from '../features/auth/authSlice.js'
-import Layout from '../components/Layout.jsx'
+import { createEvent, clearCreateError, selectCreating, selectCreateError } from '../features/events/eventSlice'
+import { fetchVenues, selectAllVenues, selectVenuesLoading } from '../features/venues/venueSlice'
+import { selectUser } from '../features/auth/authSlice'
+import type { Event, Venue } from '../types'
+import Layout from '../components/Layout.tsx'
 
 const FIELD = 'block text-sm font-medium text-neutral-300 mb-1.5'
 const INPUT = 'w-full px-4 py-3 rounded-lg bg-neutral-800/60 border border-neutral-600/50 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition'
 const INPUT_ERR = 'w-full px-4 py-3 rounded-lg bg-neutral-800/60 border border-red-500/60 text-neutral-100 placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/50 transition'
 
-function clamp(v, min, max) { return Math.max(min, Math.min(max, Number(v) || min)) }
+function clamp(v: string | number, min: number, max: number): number { return Math.max(min, Math.min(max, Number(v) || min)) }
+
+type PricingRule =
+  | { type: 'surge'; threshold: number; increase_pct: number }
+  | { type: 'early_bird'; ends_at: string; discount_pct: number }
+
+type EventForm = {
+  name: string
+  date: string
+  time: string
+  organiser: string
+  venueId: string | number
+  priceNormal: number
+  pricePremium: number
+}
+
+type EventFormErrors = Partial<Record<keyof EventForm, string>>
 
 export default function CreateEventPage() {
     const dispatch = useDispatch()
@@ -18,34 +35,36 @@ export default function CreateEventPage() {
     const user = useSelector(selectUser)
     const creating = useSelector(selectCreating)
     const serverError = useSelector(selectCreateError)
-    const venues = useSelector(selectAllVenues)
+    const venues = useSelector(selectAllVenues) as Venue[]
     const venuesLoading = useSelector(selectVenuesLoading)
 
-    const [form, setForm] = useState({
+    const organiserName = typeof user?.['email'] === 'string' ? user['email'].split('@')[0] : ''
+
+    const [form, setForm] = useState<EventForm>({
         name: '',
         date: '',
         time: '',
-        organiser: user?.email?.split('@')[0] || '',
+        organiser: organiserName || '',
         venueId: '',
         priceNormal: 100,
         pricePremium: 150,
     })
-    const [pricingRules, setPricingRules] = useState([])
-    const [errors, setErrors] = useState({})
-    const [success, setSuccess] = useState(null)
+    const [pricingRules, setPricingRules] = useState<PricingRule[]>([])
+    const [errors, setErrors] = useState<EventFormErrors>({})
+    const [success, setSuccess] = useState<Event | null>(null)
 
     useEffect(() => { 
         dispatch(clearCreateError()) 
         dispatch(fetchVenues())
     }, [dispatch])
 
-    const set = (field, value) => {
+    const set = <K extends keyof EventForm>(field: K, value: EventForm[K]) => {
         setForm(f => ({ ...f, [field]: value }))
         setErrors(e => ({ ...e, [field]: undefined }))
     }
 
-    const validate = () => {
-        const e = {}
+    const validate = (): EventFormErrors => {
+        const e: EventFormErrors = {}
         if (!form.name.trim()) e.name = 'Event name is required'
         if (!form.date) e.date = 'Date is required'
         if (!form.time) e.time = 'Time is required'
@@ -62,7 +81,7 @@ export default function CreateEventPage() {
         return e
     }
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         const errs = validate()
         if (Object.keys(errs).length) { setErrors(errs); return }
@@ -83,8 +102,6 @@ export default function CreateEventPage() {
             setSuccess(result.payload)
         }
     }
-
-    const selectedVenue = venues.find(v => v.id === form.venueId)
 
     if (success) {
         return (
@@ -251,8 +268,8 @@ export default function CreateEventPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <button type="button"
                                 onClick={() => {
-                                    const threshold = parseFloat(prompt('Surge threshold % sold (e.g. 80):', '80'))
-                                    const pct = parseFloat(prompt('Price increase % (e.g. 15):', '15'))
+                                    const threshold = parseFloat(prompt('Surge threshold % sold (e.g. 80):', '80') ?? '80')
+                                    const pct = parseFloat(prompt('Price increase % (e.g. 15):', '15') ?? '15')
                                     if (!isNaN(threshold) && !isNaN(pct) && threshold > 0 && pct > 0) {
                                         setPricingRules(r => [...r, { type: 'surge', threshold, increase_pct: pct }])
                                     }
@@ -264,7 +281,7 @@ export default function CreateEventPage() {
                             <button type="button"
                                 onClick={() => {
                                     const date = prompt('Early bird ends on (YYYY-MM-DD):', new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10))
-                                    const pct = parseFloat(prompt('Discount % (e.g. 20):', '20'))
+                                    const pct = parseFloat(prompt('Discount % (e.g. 20):', '20') ?? '20')
                                     if (date && !isNaN(pct) && pct > 0 && pct <= 100) {
                                         setPricingRules(r => [...r, { type: 'early_bird', ends_at: date + 'T23:59:59Z', discount_pct: pct }])
                                     }

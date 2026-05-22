@@ -1,66 +1,65 @@
+import type { Request, Response, NextFunction } from 'express'
 import * as venueRepo from '../repositories/venue.repo.js'
 import ApiError from '../utils/ApiError.js'
+import { getParamAsString } from '../utils/params.js'
+import { createVenueSchema } from '../utils/schemas.js'
+import type { ApiResponse } from '../types/response.js'
 
-export async function getVenues(req, res, next) {
+export async function getVenues(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const venues = await venueRepo.getAllVenues()
-    res.json(venues)
+    res.json({ success: true, data: venues } satisfies ApiResponse<typeof venues>)
   } catch (err) {
     next(err)
   }
 }
 
-export async function getVenue(req, res, next) {
+export async function getVenue(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const venue = await venueRepo.getVenueById(req.params.id)
+    const venue = await venueRepo.getVenueById(getParamAsString(req, 'id'))
     if (!venue) {
       throw new ApiError(404, 'Venue not found')
     }
-    res.json(venue)
+    res.json({ success: true, data: venue } satisfies ApiResponse<typeof venue>)
   } catch (err) {
     next(err)
   }
 }
 
-export async function createVenue(req, res, next) {
+export async function createVenue(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, type, rows, cols, totalCapacity, defaultPremiumRows } = req.body
+    const { name, type, rows, cols, totalCapacity, defaultPremiumRows } = createVenueSchema.parse(req.body)
 
-    if (!name || !name.trim()) throw new ApiError(400, 'Venue name is required')
-    if (!type || !['SEATED', 'GENERAL'].includes(type)) throw new ApiError(400, 'Venue type must be SEATED or GENERAL')
-
-    const venueType = type.toUpperCase()
-
-    if (venueType === 'SEATED') {
-      const gridRows = Math.max(1, Math.min(20, parseInt(rows) || 5))
-      const gridCols = Math.max(1, Math.min(30, parseInt(cols) || 10))
-      const premiumRowsArray = Array.isArray(defaultPremiumRows) ? defaultPremiumRows : []
+    if (type === 'SEATED') {
+      const gridRows = rows || 5
+      const gridCols = cols || 10
 
       const venue = await venueRepo.createVenue({
-        name: name.trim(),
-        type: venueType,
+        name,
+        type,
         rows: gridRows,
         cols: gridCols,
         totalCapacity: gridRows * gridCols,
-        defaultPremiumRows: premiumRowsArray
+        defaultPremiumRows: defaultPremiumRows || []
       })
 
-      res.status(201).json(venue)
+      res.status(201).json({ success: true, data: venue } satisfies ApiResponse<typeof venue>)
     } else {
-      const capacity = Math.max(50, parseInt(totalCapacity) || 500)
+      const capacity = totalCapacity || 500
 
       const venue = await venueRepo.createVenue({
-        name: name.trim(),
-        type: venueType,
+        name,
+        type,
         rows: null,
         cols: null,
         totalCapacity: capacity,
         defaultPremiumRows: []
       })
 
-      res.status(201).json(venue)
+      res.status(201).json({ success: true, data: venue } satisfies ApiResponse<typeof venue>)
     }
   } catch (err) {
     next(err)
   }
 }
+

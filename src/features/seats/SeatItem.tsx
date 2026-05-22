@@ -1,18 +1,30 @@
 import React, { useMemo, useCallback } from 'react'
 import { useDispatch, useSelector, shallowEqual } from 'react-redux'
-import { holdSeat, releaseSeat } from './seatSlice.js'
-import { selectSeatById, selectSelectedSeat } from './seatSelectors.js'
-import { seatPosition, seatFill, isLockedByOther, isAdminLocked } from '../../utils/seatHelpers.js'
-import { selectEffectiveUserId } from '../../utils/identity.js'
+import { holdSeat, releaseSeat } from './seatSlice'
+import { selectSeatById, selectSelectedSeat } from './seatSelectors'
+import { seatPosition, seatFill, isLockedByOther, isAdminLocked } from '../../utils/seatHelpers'
+import { selectEffectiveUserId } from '../../utils/identity'
+import type { Seat } from '../../types'
+import type { RootState } from '../../app/store'
 
-function SeatItemInner({ seatId, eventId, cell = 24, gap = 8 }) {
-  const seat = useSelector(state => selectSeatById(state, seatId), shallowEqual)
+function SeatItemInner({
+  seatId,
+  eventId,
+  cell = 24,
+  gap = 8,
+}: {
+  seatId: string | number
+  eventId?: string | number
+  cell?: number
+  gap?: number
+}) {
+  const seat = useSelector((state: RootState) => selectSeatById(state, seatId), shallowEqual) as Seat | null
   const dispatch = useDispatch()
   const selected = useSelector(selectSelectedSeat, shallowEqual)
   const effectiveId = useSelector(selectEffectiveUserId)
-  const pos = useMemo(() => seatPosition(seat, { cell, gap, rowsTop: 20, colsLeft: 20 }), [seat, cell, gap])
-  const fill = useMemo(() => seatFill(seat, effectiveId), [seat, effectiveId])
-  const adminLocked = isAdminLocked(seat)
+  const pos = useMemo(() => (seat ? seatPosition(seat, { cell, gap, rowsTop: 20, colsLeft: 20 }) : { x: 0, y: 0 }), [seat, cell, gap])
+  const fill = useMemo(() => (seat ? seatFill(seat, effectiveId) : '#111'), [seat, effectiveId])
+  const adminLocked = seat ? isAdminLocked(seat) : false
 
   const onClick = useCallback(() => {
     if (!seat) return
@@ -21,17 +33,20 @@ function SeatItemInner({ seatId, eventId, cell = 24, gap = 8 }) {
       window.dispatchEvent(ev)
       return
     }
-    if (isLockedByOther(seat, effectiveId)) {
+    if (seat && isLockedByOther(seat, effectiveId)) {
       const ev = new CustomEvent('th_toast', { detail: { message: 'Seat already locked' } })
       window.dispatchEvent(ev)
       return
     }
     if (seat.status === 'available') {
-      if (selected && selected.id !== seat.id && selected.status === 'locked' && selected.lockedBy === effectiveId) {
+      if (!eventId) return
+      if (selected && seat && selected.id !== seat.id && selected.status === 'locked' && selected.lockedBy === effectiveId) {
         dispatch(releaseSeat({ seatId: selected.id, eventId })).finally(() => dispatch(holdSeat({ seatId: seat.id, eventId, effectiveUserId: effectiveId })))
         return
       }
-      dispatch(holdSeat({ seatId: seat.id, eventId, effectiveUserId: effectiveId }))
+      if (seat) {
+        dispatch(holdSeat({ seatId: seat.id, eventId, effectiveUserId: effectiveId }))
+      }
     }
   }, [seat, dispatch, selected, adminLocked, effectiveId, eventId])
 

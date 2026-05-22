@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
-export function useCountdown(target, onExpire) {
+export function useCountdown(
+  target: string | number | Date | null | undefined,
+  onExpire?: () => void,
+) {
   const [now, setNow] = useState(Date.now())
   const expiredRef = useRef(false)
   useEffect(() => {

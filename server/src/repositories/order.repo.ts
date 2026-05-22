@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg'
 import { getClient, query } from '../config/db.js'
 
 interface CreateOrderInput {
@@ -8,7 +9,7 @@ interface CreateOrderInput {
   paymentStatus: string
 }
 
-export async function createOrder(client: any, { id, eventId, userId, seatId, paymentStatus }: CreateOrderInput) {
+export async function createOrder(client: PoolClient, { id, eventId, userId, seatId, paymentStatus }: CreateOrderInput) {
   const res = await client.query(
     `INSERT INTO orders (id, event_id, user_id, seat_id, payment_status)
      VALUES ($1, $2, $3, $4, $5)

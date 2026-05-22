@@ -1,52 +1,79 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import api from '../../services/apiClient.js'
+import api from '../../services/apiClient'
+import type { ApiErrorPayload, Event, EventsState } from '../../types'
 
-export const fetchEvents = createAsyncThunk('events/fetchEvents', async (_, { rejectWithValue }) => {
-  try {
-    const res = await api.get('/events')
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to fetch events' })
+type EventFormData = unknown
+
+type EventsThunkApiConfig = {
+  rejectValue: ApiErrorPayload
+}
+
+export const fetchEvents = createAsyncThunk<Event[], void, EventsThunkApiConfig>(
+  'events/fetchEvents',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get('/events')
+      return res.data as Event[]
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to fetch events' })
+    }
   }
-})
+)
 
-export const createEvent = createAsyncThunk('events/createEvent', async (formData, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/events', formData)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to create event' })
+export const createEvent = createAsyncThunk<Event, EventFormData, EventsThunkApiConfig>(
+  'events/createEvent',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const res = await api.post('/events', formData)
+      return res.data as Event
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to create event' })
+    }
   }
-})
+)
 
-export const updateEvent = createAsyncThunk('events/updateEvent', async ({ eventId, formData }, { rejectWithValue }) => {
-  try {
-    const res = await api.put(`/events/${eventId}`, formData)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to update event' })
+export const updateEvent = createAsyncThunk<Event, { eventId: string | number; formData: EventFormData }, EventsThunkApiConfig>(
+  'events/updateEvent',
+  async ({ eventId, formData }, { rejectWithValue }) => {
+    try {
+      const res = await api.put(`/events/${eventId}`, formData)
+      return res.data as Event
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to update event' })
+    }
   }
-})
+)
 
-export const cancelEvent = createAsyncThunk('events/cancelEvent', async (eventId, { rejectWithValue }) => {
-  try {
-    const res = await api.patch(`/events/${eventId}/status`)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to cancel event' })
+export const cancelEvent = createAsyncThunk<Event, string | number, EventsThunkApiConfig>(
+  'events/cancelEvent',
+  async (eventId, { rejectWithValue }) => {
+    try {
+      const res = await api.patch(`/events/${eventId}/status`)
+      return res.data as Event
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to cancel event' })
+    }
   }
-})
+)
 
-export const deleteEvent = createAsyncThunk('events/deleteEvent', async (eventId, { rejectWithValue }) => {
-  try {
-    await api.delete(`/events/${eventId}`)
-    return eventId
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to delete event' })
+export const deleteEvent = createAsyncThunk<string, string | number, EventsThunkApiConfig>(
+  'events/deleteEvent',
+  async (eventId, { rejectWithValue }) => {
+    try {
+      await api.delete(`/events/${eventId}`)
+      return String(eventId)
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to delete event' })
+    }
   }
-})
+)
 
-const initialState = {
+const initialState: EventsState = {
   events: [],
   loading: false,
   error: null,
@@ -109,8 +136,8 @@ const eventsSlice = createSlice({
 export const { clearCreateError } = eventsSlice.actions
 export default eventsSlice.reducer
 
-export const selectAllEvents = state => state.events.events
-export const selectEventsLoading = state => state.events.loading
-export const selectEventsError = state => state.events.error
-export const selectCreating = state => state.events.creating
-export const selectCreateError = state => state.events.createError
+export const selectAllEvents = (state: { events: EventsState }) => state.events.events
+export const selectEventsLoading = (state: { events: EventsState }) => state.events.loading
+export const selectEventsError = (state: { events: EventsState }) => state.events.error
+export const selectCreating = (state: { events: EventsState }) => state.events.creating
+export const selectCreateError = (state: { events: EventsState }) => state.events.createError

@@ -6,12 +6,75 @@ import * as groupLockService from './groupLock.service.js'
 import { emitSeatSold } from '../websocket/socket.js'
 import { v4 as uuidv4 } from 'uuid'
 
+export interface SeatedBookingItems {
+  seats: (string | number)[]
+}
+
+export interface GeneralBookingItems {
+  quantity: number
+  category?: string
+}
+
+export type BookingItems = SeatedBookingItems | GeneralBookingItems
+
+export interface SeatedValidationResult {
+  allAvailable: boolean
+  unavailableSeats: (string | number)[]
+  totalSeats: number
+}
+
+export interface GeneralValidationResult {
+  isAvailable: boolean
+  remaining: number
+  requested: number
+  totalCapacity: number
+  sold: number
+}
+
+export type ValidationResult = SeatedValidationResult | GeneralValidationResult
+
+export interface SeatedHoldResult {
+  groupLockId: string
+  lockedSeats: (string | number)[]
+}
+
+export interface GeneralHoldResult {
+  groupLockId: string
+  reservedTickets: string[]
+}
+
+export type HoldResult = SeatedHoldResult | GeneralHoldResult
+
+export interface SeatedOrderResponse {
+  id: string
+  seatId: string
+  category: string
+  price: number
+}
+
+export interface GeneralOrderResponse {
+  id: string
+  ticketCount: number
+  category?: string
+  pricePerUnit: number
+  totalAmount: number
+}
+
+export interface GroupBookingResult {
+  groupBookingId: string
+  orders: SeatedOrderResponse[] | GeneralOrderResponse[]
+  totalAmount: number
+  itemCount: number
+  addonTotal?: number
+  discountAmount?: number
+}
+
 /**
  * SEATED event booking strategy
  * Handles multi-seat selection with atomic locking
  */
 export const seatedBooking = {
-  async validateAvailability(eventId, seatIds) {
+  async validateAvailability(eventId: string | number, seatIds: (string | number)[]) {
     const placeholders = seatIds.map((_, i) => `$${i + 2}`).join(',')
     const res = await query(
       `SELECT id, status FROM seats WHERE event_id = $1 AND id IN (${placeholders})`,
@@ -28,39 +91,39 @@ export const seatedBooking = {
     }
   },
 
-  async holdMultipleSeats(eventId, seatIds, userId) {
+  async holdMultipleSeats(eventId: string | number, seatIds: (string | number)[], userId: string | number) {
     const validation = await this.validateAvailability(eventId, seatIds)
     if (!validation.allAvailable) {
       throw new ApiError(409, `Seats unavailable: ${validation.unavailableSeats.join(', ')}`)
     }
 
     // Acquire group lock
-    const groupLockId = await groupLockService.acquireGroupLock(eventId, seatIds, userId, 'seat')
+    const groupLockId = await groupLockService.acquireGroupLock(eventId, seatIds, String(userId), 'seat')
     if (!groupLockId) {
       throw new ApiError(409, 'Could not acquire lock on seats. Please try again.')
     }
 
     // Lock individual seats for WebSocket broadcasting
     for (const seatId of seatIds) {
-      await lockService.acquireSeatLock(eventId, seatId, userId)
+      await lockService.acquireSeatLock(String(eventId), String(seatId), String(userId))
     }
 
     return { groupLockId, lockedSeats: seatIds }
   },
 
-  async releaseSeats(eventId, seatIds, userId, groupLockId) {
+  async releaseSeats(eventId: string | number, seatIds: (string | number)[], userId: string | number, groupLockId: string) {
     // Release group lock
     if (groupLockId) {
-      await groupLockService.releaseGroupLock(groupLockId, userId)
+      await groupLockService.releaseGroupLock(groupLockId, String(userId))
     }
 
     // Release individual locks
     for (const seatId of seatIds) {
-      await lockService.releaseSeatLock(eventId, seatId)
+      await lockService.releaseSeatLock(String(eventId), String(seatId))
     }
   },
 
-  async createGroupOrder(eventId, userId, seatIds, paymentStatus = 'pending') {
+  async createGroupOrder(eventId: string | number, userId: string | number, seatIds: (string | number)[], paymentStatus: string = 'pending') {
     const client = await getClient()
     try {
       await client.query('BEGIN')
@@ -82,7 +145,7 @@ export const seatedBooking = {
       // Calculate total amount first
       const groupBookingId = uuidv4()
       let totalAmount = 0
-      const orders = []
+      const orders: SeatedOrderResponse[] = []
 
       for (const seat of seatsRes.rows) {
         const category = seat.category
@@ -150,7 +213,7 @@ export const seatedBooking = {
  * Handles quantity-based ticket booking with tier support
  */
 export const generalTicketing = {
-  async validateTicketAvailability(eventId, quantity, category = 'NORMAL') {
+  async validateTicketAvailability(eventId: string | number, quantity: number, category: string = 'NORMAL') {
     // Get event capacity and sold count
     const eventRes = await query('SELECT total_capacity FROM events WHERE id = $1', [eventId])
     const { total_capacity } = eventRes.rows[0]
@@ -171,7 +234,7 @@ export const generalTicketing = {
     }
   },
 
-  async holdTickets(eventId, quantity, category = 'NORMAL', userId) {
+  async holdTickets(eventId: string | number, quantity: number, category: string = 'NORMAL', userId: string | number) {
     const validation = await this.validateTicketAvailability(eventId, quantity, category)
     if (!validation.isAvailable) {
       throw new ApiError(409, `Only ${validation.remaining} ${category} tickets available`)
@@ -179,22 +242,22 @@ export const generalTicketing = {
 
     // For general events, we don't lock individual seats, but we track the reservation
     const ticketIds = Array.from({ length: quantity }, (_, i) => `ticket_${Date.now()}_${i}`)
-    const groupLockId = await groupLockService.acquireGroupLock(eventId, ticketIds, userId, 'ticket')
+    const groupLockId = await groupLockService.acquireGroupLock(eventId, ticketIds, String(userId), 'ticket')
 
     if (!groupLockId) {
       throw new ApiError(409, 'Could not reserve tickets. Please try again.')
     }
 
-    return { groupLockId, reservedTickets: quantity, category }
+    return { groupLockId, reservedTickets: ticketIds }
   },
 
-  async releaseTickets(eventId, groupLockId, userId) {
+  async releaseTickets(eventId: string | number, groupLockId: string, userId: string | number) {
     if (groupLockId) {
-      await groupLockService.releaseGroupLock(groupLockId, userId)
+      await groupLockService.releaseGroupLock(groupLockId, String(userId))
     }
   },
 
-  async createGroupOrder(eventId, userId, quantity, category = 'NORMAL', paymentStatus = 'pending') {
+  async createGroupOrder(eventId: string | number, userId: string | number, quantity: number, category: string = 'NORMAL', paymentStatus: string = 'pending') {
     const client = await getClient()
     try {
       await client.query('BEGIN')
@@ -243,51 +306,76 @@ export const generalTicketing = {
   }
 }
 
+function isSeatedBooking(items: BookingItems): items is SeatedBookingItems {
+  return items !== null && typeof items === 'object' && 'seats' in items;
+}
+
 /**
  * Main booking orchestrator - routes to appropriate strategy
  */
 export const bookingService = {
-  async validateBooking(eventId, bookingItems) {
+  async validateBooking(eventId: string | number, bookingItems: BookingItems): Promise<ValidationResult> {
     // bookingItems: { seats: [id1, id2, ...] } or { quantity, category }
     const eventRes = await query('SELECT v.type AS event_type FROM events e JOIN venues v ON e.venue_id = v.id WHERE e.id = $1', [eventId])
     const { event_type } = eventRes.rows[0]
 
     if (event_type === 'SEATED') {
+      if (!isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for seated event')
+      }
       return seatedBooking.validateAvailability(eventId, bookingItems.seats || [])
     } else {
+      if (isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for general event')
+      }
       return generalTicketing.validateTicketAvailability(eventId, bookingItems.quantity, bookingItems.category)
     }
   },
 
-  async holdBooking(eventId, userId, bookingItems) {
+  async holdBooking(eventId: string | number, userId: string | number, bookingItems: BookingItems): Promise<HoldResult> {
     const eventRes = await query('SELECT v.type AS event_type FROM events e JOIN venues v ON e.venue_id = v.id WHERE e.id = $1', [eventId])
     const { event_type } = eventRes.rows[0]
 
     if (event_type === 'SEATED') {
+      if (!isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for seated event')
+      }
       return seatedBooking.holdMultipleSeats(eventId, bookingItems.seats, userId)
     } else {
+      if (isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for general event')
+      }
       return generalTicketing.holdTickets(eventId, bookingItems.quantity, bookingItems.category, userId)
     }
   },
 
-  async releaseBooking(eventId, userId, groupLockId, bookingItems) {
+  async releaseBooking(eventId: string | number, userId: string | number, groupLockId: string, bookingItems?: BookingItems) {
     const eventRes = await query('SELECT v.type AS event_type FROM events e JOIN venues v ON e.venue_id = v.id WHERE e.id = $1', [eventId])
     const { event_type } = eventRes.rows[0]
 
     if (event_type === 'SEATED') {
+      if (!bookingItems || !isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for seated event')
+      }
       return seatedBooking.releaseSeats(eventId, bookingItems.seats, userId, groupLockId)
     } else {
       return generalTicketing.releaseTickets(eventId, groupLockId, userId)
     }
   },
 
-  async createGroupBooking(eventId, userId, bookingItems, paymentStatus = 'pending') {
+  async createGroupBooking(eventId: string | number, userId: string | number, bookingItems: BookingItems, paymentStatus: string = 'pending'): Promise<GroupBookingResult> {
     const eventRes = await query('SELECT v.type AS event_type FROM events e JOIN venues v ON e.venue_id = v.id WHERE e.id = $1', [eventId])
     const { event_type } = eventRes.rows[0]
 
     if (event_type === 'SEATED') {
+      if (!isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for seated event')
+      }
       return seatedBooking.createGroupOrder(eventId, userId, bookingItems.seats, paymentStatus)
     } else {
+      if (isSeatedBooking(bookingItems)) {
+        throw new ApiError(400, 'Invalid booking items for general event')
+      }
       return generalTicketing.createGroupOrder(eventId, userId, bookingItems.quantity, bookingItems.category, paymentStatus)
     }
   }

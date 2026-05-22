@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg'
 import { query } from '../config/db.js'
 
 export async function getAddonsByEvent(eventId: string) {
@@ -12,9 +13,9 @@ export async function getAddonsByEvent(eventId: string) {
 interface CreateAddonInput {
   eventId: string
   name: string
-  description?: string
+  description?: string | null
   price: number
-  maxQuantity?: number
+  maxQuantity?: number | null
 }
 
 export async function createAddon({ eventId, name, description, price, maxQuantity }: CreateAddonInput) {
@@ -29,9 +30,9 @@ export async function createAddon({ eventId, name, description, price, maxQuanti
 
 interface UpdateAddonInput {
   name: string
-  description?: string
+  description?: string | null
   price: number
-  maxQuantity?: number
+  maxQuantity?: number | null
 }
 
 export async function updateAddon(addonId: string, { name, description, price, maxQuantity }: UpdateAddonInput) {
@@ -60,7 +61,7 @@ interface AddonItem {
   quantity: number
 }
 
-export async function createOrderAddons(client: any, groupBookingId: string, addonItems: AddonItem[]) {
+export async function createOrderAddons(client: PoolClient, groupBookingId: string, addonItems: AddonItem[]) {
   let total = 0
   for (const item of addonItems) {
     const { addonId, quantity } = item

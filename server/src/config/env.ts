@@ -1,44 +1,46 @@
 import dotenv from 'dotenv'
+import { z } from 'zod'
 
 dotenv.config()
 
-interface Env {
-  nodeEnv: string
-  port: number
-  databaseUrl: string | undefined
-  redisUrl: string | undefined
-  corsOrigin: string | undefined
-  rateLimitWindowMs: number
-  rateLimitMax: number
-  logLevel: string
-  jwtSecret: string | undefined
+const envSchema = z.object({
+  nodeEnv: z.enum(['development', 'production', 'test']).default('development'),
+  port: z.coerce.number().default(4000),
+  databaseUrl: z.string().optional(),
+  redisUrl: z.string().optional(),
+  corsOrigin: z.string().optional(),
+  rateLimitWindowMs: z.coerce.number().default(60000),
+  rateLimitMax: z.coerce.number().default(100),
+  logLevel: z.string().default('info'),
+  jwtSecret: z.string().default('development_secret_key_tickethive')
+}).refine((data) => {
+  if (data.nodeEnv === 'production') {
+    return !!data.databaseUrl && !!data.redisUrl && data.jwtSecret !== 'development_secret_key_tickethive'
+  }
+  return true;
+}, {
+  message: "DATABASE_URL, JWT_SECRET, and REDIS_URL are strictly required in production mode, and JWT_SECRET must be customized"
+})
+
+const parsed = envSchema.safeParse({
+  nodeEnv: process.env['NODE_ENV'],
+  port: process.env['PORT'],
+  databaseUrl: process.env['DATABASE_URL'],
+  redisUrl: process.env['REDIS_URL'],
+  corsOrigin: process.env['CORS_ORIGIN'],
+  rateLimitWindowMs: process.env['RATE_LIMIT_WINDOW_MS'],
+  rateLimitMax: process.env['RATE_LIMIT_MAX'],
+  logLevel: process.env['LOG_LEVEL'],
+  jwtSecret: process.env['JWT_SECRET']
+})
+
+if (!parsed.success) {
+  console.error('❌ Environment validation failed:')
+  console.error(JSON.stringify(parsed.error.format(), null, 2))
+  process.exit(1)
 }
 
-const env: Env = {
-  nodeEnv: process.env.NODE_ENV || 'development',
-  port: Number(process.env.PORT) || 4000,
-  databaseUrl: process.env.DATABASE_URL,
-  redisUrl: process.env.REDIS_URL,
-  corsOrigin: process.env.CORS_ORIGIN,
-  rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
-  rateLimitMax: Number(process.env.RATE_LIMIT_MAX) || 100,
-  logLevel: process.env.LOG_LEVEL || 'info',
-  jwtSecret: process.env.JWT_SECRET
-}
-
-// Production safety checks
-if (env.nodeEnv === 'production') {
-  if (!env.databaseUrl) {
-    throw new Error('DATABASE_URL is required in production')
-  }
-
-  if (!env.jwtSecret) {
-    throw new Error('JWT_SECRET is required in production')
-  }
-
-  if (!env.redisUrl) {
-    throw new Error('REDIS_URL is required in production')
-  }
-}
+export type Env = z.infer<typeof envSchema>
+const env = parsed.data
 
 export default env

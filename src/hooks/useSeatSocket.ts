@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
-import { applySeatLocked, applySeatReleased, applySeatSold, setConnectionStatus, fetchSeats } from '../features/seats/seatSlice.js'
-import { connectSocket, joinEvent, leaveEvent, onSeatLocked, onSeatReleased, onSeatSold, onSeatsReset, onSeatAdminLocked, onGridResized, onConnection } from '../services/socketClient.js'
-import { normalizeSeat } from '../utils/seatHelpers.js'
+import { applySeatLocked, applySeatReleased, applySeatSold, setConnectionStatus, fetchSeats } from '../features/seats/seatSlice'
+import { connectSocket, joinEvent, leaveEvent, onSeatLocked, onSeatReleased, onSeatSold, onSeatsReset, onSeatAdminLocked, onGridResized, onConnection } from '../services/socketClient'
+import { normalizeSeat } from '../utils/seatHelpers'
 
-export function useSeatSocketInit(eventId) {
+export function useSeatSocketInit(eventId: string | undefined) {
   const dispatch = useDispatch()
 
   useEffect(() => {

@@ -6,7 +6,13 @@ import ApiError from '../utils/ApiError.js'
 import { releaseSeatLock } from './lock.service.js'
 import { emitSeatSold } from '../websocket/socket.js'
 
-export async function confirmSeat({ seatId, eventId, userId }) {
+interface ConfirmSeatParams {
+  seatId: string | number
+  eventId: string | number
+  userId: string | number
+}
+
+export async function confirmSeat({ seatId, eventId, userId }: ConfirmSeatParams) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
@@ -18,7 +24,7 @@ export async function confirmSeat({ seatId, eventId, userId }) {
     if (seat.status !== 'locked') {
       throw new ApiError(409, 'Seat is not locked')
     }
-    if (!seat.locked_by || seat.locked_by !== userId) {
+    if (!seat.locked_by || String(seat.locked_by) !== String(userId)) {
       throw new ApiError(409, 'Seat lock owned by another user')
     }
     if (seat.lock_expires_at && new Date(seat.lock_expires_at) < now) {
@@ -26,23 +32,27 @@ export async function confirmSeat({ seatId, eventId, userId }) {
     }
 
     const updatedSeat = await seatRepo.markSeatSold(client, seatId, eventId)
+    if (!updatedSeat) {
+      throw new ApiError(500, 'Failed to update seat status')
+    }
     try {
       await orderRepo.createOrder(client, {
         id: uuidv4(),
-        eventId,
-        userId,
-        seatId,
+        eventId: String(eventId),
+        userId: String(userId),
+        seatId: String(seatId),
         paymentStatus: 'paid'
       })
     } catch (e) {
-      if (e && e.code === '23505') {
+      const error = e as any
+      if (error && error.code === '23505') {
         throw new ApiError(409, 'Order already exists for seat')
       }
       throw e
     }
 
     await client.query('COMMIT')
-    await releaseSeatLock(eventId, seatId)
+    await releaseSeatLock(String(eventId), String(seatId))
     emitSeatSold(updatedSeat, eventId)
     return updatedSeat
   } catch (err) {

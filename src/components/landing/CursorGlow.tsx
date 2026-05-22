@@ -1,10 +1,10 @@
 import React, { useRef, useEffect } from 'react'
 
 export default function CursorGlow() {
-    const ref = useRef(null)
+    const ref = useRef<HTMLDivElement | null>(null)
 
     useEffect(() => {
-        const handler = (e) => {
+        const handler = (e: MouseEvent) => {
             if (ref.current) {
                 ref.current.style.background =
                     `radial-gradient(650px circle at ${e.clientX}px ${e.clientY}px, rgba(6,182,212,0.06), transparent 40%)`

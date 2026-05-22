@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useParams } from 'react-router-dom'
-import { fetchSeats } from '../features/seats/seatSlice.js'
-import { useSeatSocketInit } from '../hooks/useSeatSocket.js'
-import { selectLiveStats } from '../features/seats/seatSelectors.js'
+import { fetchSeats } from '../features/seats/seatSlice'
+import { useSeatSocketInit } from '../hooks/useSeatSocket'
+import { selectLiveStats } from '../features/seats/seatSelectors'
 import {
     fetchStats,
     resetSeats,
@@ -14,16 +14,17 @@ import {
     selectAdminActionMessage,
     clearActionMessage,
     clearAdminError
-} from '../features/admin/adminSlice.js'
-import StatsCards from '../features/admin/StatsCards.jsx'
-import GridControls from '../features/admin/GridControls.jsx'
-import AdminSeatMap from '../features/admin/AdminSeatMap.jsx'
+} from '../features/admin/adminSlice'
+import StatsCards from '../features/admin/StatsCards.tsx'
+import GridControls from '../features/admin/GridControls.tsx'
+import AdminSeatMap from '../features/admin/AdminSeatMap.tsx'
 
 export default function AdminDashboard() {
     const dispatch = useDispatch()
-    const { eventId } = useParams()
+    const params = useParams<{ eventId: string }>()
+    const eventId = params.eventId
     useSeatSocketInit(eventId)
-    const adminStats = useSelector(selectAdminStats)
+    const adminStats = useSelector(selectAdminStats) as { rows?: number; cols?: number; total?: number } | undefined
     const liveStats = useSelector(selectLiveStats)
     const loading = useSelector(selectAdminLoading)
     const actionLoading = useSelector(selectAdminActionLoading)
@@ -32,6 +33,7 @@ export default function AdminDashboard() {
     const [showResetConfirm, setShowResetConfirm] = useState(false)
 
     useEffect(() => {
+        if (!eventId) return
         dispatch(fetchStats(eventId))
         dispatch(fetchSeats(eventId))
     }, [dispatch, eventId])
@@ -42,8 +44,10 @@ export default function AdminDashboard() {
             window.dispatchEvent(ev)
             dispatch(clearActionMessage())
             // Refresh data after action
-            dispatch(fetchStats(eventId))
-            dispatch(fetchSeats(eventId))
+            if (eventId) {
+                dispatch(fetchStats(eventId))
+                dispatch(fetchSeats(eventId))
+            }
         }
     }, [actionMessage, dispatch, eventId])
 
@@ -56,9 +60,14 @@ export default function AdminDashboard() {
     }, [error, dispatch])
 
     const handleReset = useCallback(() => {
+        if (!eventId) return
         dispatch(resetSeats(eventId))
         setShowResetConfirm(false)
     }, [dispatch, eventId])
+
+    if (!eventId) {
+        return <div className="text-neutral-400">Invalid event selected</div>
+    }
 
     return (
         <div className="space-y-6">

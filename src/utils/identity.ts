@@ -1,4 +1,16 @@
-import { getClientId } from './constants.js'
+import { getClientId } from './constants'
+
+interface User {
+  id?: string | number
+}
+
+interface AuthState {
+  user?: User | null
+}
+
+interface RootState {
+  auth?: AuthState
+}
 
 /**
  * Returns the effective user ID for seat ownership checks.
@@ -10,7 +22,7 @@ import { getClientId } from './constants.js'
  * If *no* JWT user is present (legacy / anon flow), we fall back to the
  * anonymous clientId so things still work without auth.
  */
-export const selectEffectiveUserId = state => {
+export const selectEffectiveUserId = (state: RootState) => {
     const user = state.auth?.user
     if (user && user.id != null) {
         // The backend stores locked_by as a string in Postgres, but the id might

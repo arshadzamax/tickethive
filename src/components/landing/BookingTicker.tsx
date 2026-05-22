@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { tickerItems } from './landingData.js'
+import { tickerItems } from './landingData'
 
 export default function BookingTicker() {
     const doubled = useMemo(() => [...tickerItems, ...tickerItems], [])

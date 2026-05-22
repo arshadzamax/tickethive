@@ -1,13 +1,24 @@
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import BookingPanel from '../features/booking/BookingPanel.jsx'
-import { useSeatSocketInit } from '../hooks/useSeatSocket.js'
-import { fetchEvents, selectAllEvents, selectEventsLoading } from '../features/events/eventSlice.js'
-import { fetchSeats } from '../features/seats/seatSlice.js'
-import api from '../services/apiClient.js'
+import BookingPanel from '../features/booking/BookingPanel.tsx'
+import { useSeatSocketInit } from '../hooks/useSeatSocket'
+import { fetchEvents, selectAllEvents, selectEventsLoading } from '../features/events/eventSlice'
+import { fetchSeats } from '../features/seats/seatSlice'
+import api from '../services/apiClient'
 
-function formatDate(dateStr) {
+type PricingRule = {
+  type: 'surge' | 'early_bird'
+  label: string
+}
+
+type EffectivePriceResponse = {
+  normalPrice?: number
+  premiumPrice?: number
+  appliedRules?: PricingRule[]
+}
+
+function formatDate(dateStr: string | number | Date | null | undefined) {
   if (!dateStr) return null
   const d = new Date(dateStr)
   return d.toLocaleDateString('en-US', {
@@ -21,13 +32,13 @@ function formatDate(dateStr) {
 }
 
 export default function BookingPage() {
-  const { eventId } = useParams()
+  const { eventId } = useParams<{ eventId: string }>()
   useSeatSocketInit(eventId)
 
   const dispatch = useDispatch()
   const events = useSelector(selectAllEvents)
   const loading = useSelector(selectEventsLoading)
-  const [effectivePrices, setEffectivePrices] = useState(null)
+  const [effectivePrices, setEffectivePrices] = useState<EffectivePriceResponse | null>(null)
 
   // Fetch events if the store is empty (e.g. user navigated directly to this URL)
   useEffect(() => {
@@ -47,7 +58,7 @@ export default function BookingPage() {
   useEffect(() => {
     if (!eventId) return
     api.get(`/events/${eventId}/effective-price`)
-      .then(r => setEffectivePrices(r.data))
+      .then(r => setEffectivePrices(r.data as EffectivePriceResponse))
       .catch(() => {})
   }, [eventId])
 

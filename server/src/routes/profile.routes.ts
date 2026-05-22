@@ -1,6 +1,8 @@
-import { Router } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import auth from '../middleware/auth.js'
 import { query } from '../config/db.js'
+import { requireUser } from '../utils/params.js'
+import type { ApiResponse } from '../types/response.js'
 
 const router = Router()
 
@@ -8,9 +10,9 @@ const router = Router()
  * GET /api/profile
  * Returns aggregated profile data for the authenticated user
  */
-router.get('/profile', auth, async (req, res, next) => {
+router.get('/profile', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = req.user.id
+    const userId = requireUser(req).id
     const userRes = await query('SELECT email, role, created_at FROM users WHERE id = $1', [userId])
     if (userRes.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' })
@@ -67,25 +69,28 @@ router.get('/profile', auth, async (req, res, next) => {
     const eventsAttended = bookingsRes.rows.filter(b => new Date(b.event_date) < now).length
 
     res.json({
-      user: {
-        id: userId,
-        email: userEmail,
-        role: userRole,
-        memberSince: dbUser.created_at
-      },
-      stats: {
-        totalBookings: bookingsRes.rows.length,
-        completedBookings,
-        totalSpent,
-        uniqueEvents,
-        eventsAttended,
-        eventsHosted: hostedRes.rows.length,
-        totalOrders: ordersRes.rows.length
-      },
-      bookings: bookingsRes.rows,
-      orders: ordersRes.rows,
-      hostedEvents: hostedRes.rows
-    })
+      success: true,
+      data: {
+        user: {
+          id: userId,
+          email: userEmail,
+          role: userRole,
+          memberSince: dbUser.created_at
+        },
+        stats: {
+          totalBookings: bookingsRes.rows.length,
+          completedBookings,
+          totalSpent,
+          uniqueEvents,
+          eventsAttended,
+          eventsHosted: hostedRes.rows.length,
+          totalOrders: ordersRes.rows.length
+        },
+        bookings: bookingsRes.rows,
+        orders: ordersRes.rows,
+        hostedEvents: hostedRes.rows
+      }
+    } satisfies ApiResponse<any>)
   } catch (err) {
     next(err)
   }

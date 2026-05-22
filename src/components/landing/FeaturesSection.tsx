@@ -1,6 +1,6 @@
 import React from 'react'
-import ScrollReveal from './ScrollReveal.jsx'
-import { features } from './landingData.js'
+import ScrollReveal from './ScrollReveal.tsx'
+import { features } from './landingData'
 
 export default function FeaturesSection() {
     return (

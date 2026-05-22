@@ -1,14 +1,20 @@
 import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { resizeGrid, selectAdminActionLoading } from './adminSlice.js'
+import { resizeGrid, selectAdminActionLoading } from './adminSlice'
 
-export default function GridControls({ stats, eventId }) {
+type GridControlsProps = {
+    stats?: { rows?: number; cols?: number; total?: number }
+    eventId?: string | number
+}
+
+export default function GridControls({ stats, eventId }: GridControlsProps) {
     const dispatch = useDispatch()
     const actionLoading = useSelector(selectAdminActionLoading)
     const [rows, setRows] = useState(stats?.rows || 5)
     const [cols, setCols] = useState(stats?.cols || 10)
 
     const onResize = () => {
+        if (!eventId) return
         if (rows >= 1 && cols >= 1 && rows <= 50 && cols <= 50) {
             dispatch(resizeGrid({ rows: Number(rows), cols: Number(cols), eventId }))
         }
@@ -26,7 +32,7 @@ export default function GridControls({ stats, eventId }) {
                         min={1}
                         max={50}
                         value={rows}
-                        onChange={e => setRows(e.target.value)}
+                        onChange={e => setRows(Number(e.target.value))}
                         className="w-20 px-3 py-2 rounded-lg bg-neutral-900/60 border border-neutral-600/50 text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     />
                 </div>
@@ -39,7 +45,7 @@ export default function GridControls({ stats, eventId }) {
                         min={1}
                         max={50}
                         value={cols}
-                        onChange={e => setCols(e.target.value)}
+                        onChange={e => setCols(Number(e.target.value))}
                         className="w-20 px-3 py-2 rounded-lg bg-neutral-900/60 border border-neutral-600/50 text-neutral-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                     />
                 </div>

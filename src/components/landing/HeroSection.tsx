@@ -1,8 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import ScrollReveal from './ScrollReveal.jsx'
-import AnimatedSeatGrid from './AnimatedSeatGrid.jsx'
-import { socialProof } from './landingData.js'
+import ScrollReveal from './ScrollReveal.tsx'
+import AnimatedSeatGrid from './AnimatedSeatGrid.tsx'
+import { socialProof } from './landingData'
 
 export default function HeroSection() {
     return (

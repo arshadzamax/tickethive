@@ -4,8 +4,9 @@ export default function Toast() {
   const [msg, setMsg] = useState('')
   const [show, setShow] = useState(false)
   useEffect(() => {
-    const handler = e => {
-      setMsg(e.detail?.message || '')
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ message?: string }>
+      setMsg(custom.detail?.message || '')
       setShow(true)
       setTimeout(() => setShow(false), 2400)
     }

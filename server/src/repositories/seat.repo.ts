@@ -1,6 +1,8 @@
+import type { PoolClient } from 'pg'
 import { query, getClient } from '../config/db.js'
+import type { Seat } from '../types/db.js'
 
-export async function getAllSeats(eventId: string) {
+export async function getAllSeats(eventId: string | number): Promise<Seat[]> {
   const res = await query(
     'SELECT id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats WHERE event_id = $1 ORDER BY row, number',
     [eventId]
@@ -8,7 +10,7 @@ export async function getAllSeats(eventId: string) {
   return res.rows
 }
 
-export async function getSeatByIdForUpdate(client: any, seatId: string, eventId: string) {
+export async function getSeatByIdForUpdate(client: PoolClient, seatId: string | number, eventId: string | number): Promise<Seat | null> {
   const res = await client.query(
     'SELECT id, event_id, row, number, status, locked_by, lock_expires_at, admin_locked FROM seats WHERE id = $1 AND event_id = $2 FOR UPDATE',
     [seatId, eventId]
@@ -16,7 +18,7 @@ export async function getSeatByIdForUpdate(client: any, seatId: string, eventId:
   return res.rows[0] || null
 }
 
-export async function lockSeat(client: any, seatId: string, eventId: string, userId: string, lockMs: number) {
+export async function lockSeat(client: PoolClient, seatId: string | number, eventId: string | number, userId: string | number, lockMs: number): Promise<Seat | null> {
   const res = await client.query(
     `UPDATE seats
      SET status = 'locked',
@@ -30,7 +32,7 @@ export async function lockSeat(client: any, seatId: string, eventId: string, use
   return res.rows[0] || null
 }
 
-export async function markSeatSold(client: any, seatId: string, eventId: string) {
+export async function markSeatSold(client: PoolClient, seatId: string | number, eventId: string | number): Promise<Seat | null> {
   const res = await client.query(
     `UPDATE seats
      SET status = 'sold',
@@ -44,7 +46,7 @@ export async function markSeatSold(client: any, seatId: string, eventId: string)
   return res.rows[0] || null
 }
 
-export async function releaseSeat(client: any, seatId: string, eventId: string) {
+export async function releaseSeat(client: PoolClient, seatId: string | number, eventId: string | number): Promise<Seat | null> {
   const res = await client.query(
     `UPDATE seats
      SET status = 'available',
@@ -87,7 +89,7 @@ export async function expireLockedSeats() {
    Admin Operations
 ============================= */
 
-export async function resetAllSeats(eventId: string) {
+export async function resetAllSeats(eventId: string | number) {
   const client = await getClient()
   try {
     await client.query('BEGIN')
@@ -111,7 +113,7 @@ export async function resetAllSeats(eventId: string) {
   }
 }
 
-export async function adminLockSeat(seatId: string, eventId: string) {
+export async function adminLockSeat(seatId: string | number, eventId: string | number) {
   const res = await query(
     `UPDATE seats
      SET admin_locked = TRUE,
@@ -126,7 +128,7 @@ export async function adminLockSeat(seatId: string, eventId: string) {
   return res.rows[0] || null
 }
 
-export async function adminUnlockSeat(seatId: string, eventId: string) {
+export async function adminUnlockSeat(seatId: string | number, eventId: string | number) {
   const res = await query(
     `UPDATE seats
      SET admin_locked = FALSE,
@@ -138,7 +140,7 @@ export async function adminUnlockSeat(seatId: string, eventId: string) {
   return res.rows[0] || null
 }
 
-export async function getSeatStats(eventId: string) {
+export async function getSeatStats(eventId: string | number) {
   const res = await query(`
     SELECT
       COUNT(*) AS total,
@@ -163,7 +165,7 @@ export async function getSeatStats(eventId: string) {
   }
 }
 
-export async function getGridDimensions(eventId: string) {
+export async function getGridDimensions(eventId: string | number) {
   const res = await query(
     'SELECT MAX(row) AS max_row, MAX(number) AS max_col FROM seats WHERE event_id = $1',
     [eventId]
@@ -175,7 +177,7 @@ export async function getGridDimensions(eventId: string) {
   }
 }
 
-export async function resizeGrid(eventId: string, newRows: number, newCols: number) {
+export async function resizeGrid(eventId: string | number, newRows: number, newCols: number) {
   const client = await getClient()
   try {
     await client.query('BEGIN')

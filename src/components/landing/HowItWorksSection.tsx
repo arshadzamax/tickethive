@@ -1,6 +1,6 @@
 import React from 'react'
-import ScrollReveal from './ScrollReveal.jsx'
-import { steps } from './landingData.js'
+import ScrollReveal from './ScrollReveal.tsx'
+import { steps } from './landingData'
 
 export default function HowItWorksSection() {
     return (

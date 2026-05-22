@@ -1,10 +1,10 @@
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 import env from './env.js'
 import logger from '../utils/logger.js'
 
-const redis = new Redis(env.redisUrl as string)
+const redis = env.redisUrl ? new Redis(env.redisUrl) : new Redis()
 
-redis.on('error', (err) => {
+redis.on('error', (err: unknown) => {
   logger.error('Redis error', { err })
 })
 

@@ -1,21 +1,25 @@
-import React from 'react'
+import React, { type ReactNode } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { selectConnectionStatus } from '../features/seats/seatSelectors.js'
-import { selectUser, selectIsAdmin, logout } from '../features/auth/authSlice.js'
-import Toast from './Toast.jsx'
+import { selectConnectionStatus } from '../features/seats/seatSelectors'
+import { selectUser, selectIsAdmin, logout } from '../features/auth/authSlice'
+import Toast from './Toast.tsx'
 
-export default function Layout({ children }) {
+interface LayoutProps {
+  children: ReactNode
+}
+
+export default function Layout({ children }: LayoutProps) {
   const status = useSelector(selectConnectionStatus)
   const user = useSelector(selectUser)
   const isAdmin = useSelector(selectIsAdmin)
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
-  const { eventId } = useParams()
+  const { eventId } = useParams<{ eventId?: string }>()
   const dotClass = status === 'connected' ? 'th-connection-dot connected' : 'th-connection-dot connecting'
 
-  const isActive = (path) => location.pathname === path
+  const isActive = (path: string) => location.pathname === path
 
   const bookingPath = eventId ? `/events/${eventId}/booking` : '/events'
   const adminPath = eventId ? `/events/${eventId}/admin` : '/events'
@@ -71,10 +75,17 @@ export default function Layout({ children }) {
                   to="/profile"
                   className="flex items-center gap-2 px-2.5 py-1 rounded-lg hover:bg-neutral-800 transition group"
                 >
-                  <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-[10px] font-bold text-white">
-                    {user.email?.slice(0, 2).toUpperCase()}
-                  </div>
-                  <span className="text-neutral-400 group-hover:text-neutral-200 transition">{user.email}</span>
+                  {(() => {
+                    const userEmail = typeof user?.['email'] === 'string' ? user['email'] : ''
+                    return (
+                      <>
+                        <div className="w-6 h-6 rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-[10px] font-bold text-white">
+                          {userEmail.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-neutral-400 group-hover:text-neutral-200 transition">{userEmail}</span>
+                      </>
+                    )
+                  })()}
                 </Link>
                 {isAdmin && (
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">

@@ -1,15 +1,15 @@
 import React from 'react'
 
-import CursorGlow from '../components/landing/CursorGlow.jsx'
-import LandingNav from '../components/landing/LandingNav.jsx'
-import HeroSection from '../components/landing/HeroSection.jsx'
-import BookingTicker from '../components/landing/BookingTicker.jsx'
-import FeaturesSection from '../components/landing/FeaturesSection.jsx'
-import HowItWorksSection from '../components/landing/HowItWorksSection.jsx'
-import TestimonialsSection from '../components/landing/TestimonialsSection.jsx'
-import LiveEventsSection from '../components/landing/LiveEventsSection.jsx'
-import PortalSection from '../components/landing/PortalSection.jsx'
-import LandingFooter from '../components/landing/LandingFooter.jsx'
+import CursorGlow from '../components/landing/CursorGlow.tsx'
+import LandingNav from '../components/landing/LandingNav.tsx'
+import HeroSection from '../components/landing/HeroSection.tsx'
+import BookingTicker from '../components/landing/BookingTicker.tsx'
+import FeaturesSection from '../components/landing/FeaturesSection.tsx'
+import HowItWorksSection from '../components/landing/HowItWorksSection.tsx'
+import TestimonialsSection from '../components/landing/TestimonialsSection.tsx'
+import LiveEventsSection from '../components/landing/LiveEventsSection.tsx'
+import PortalSection from '../components/landing/PortalSection.tsx'
+import LandingFooter from '../components/landing/LandingFooter.tsx'
 
 export default function LandingPage() {
 

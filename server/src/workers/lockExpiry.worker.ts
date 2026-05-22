@@ -1,9 +1,9 @@
 import env from '../config/env.js'
 import logger from '../utils/logger.js'
 import { expireLockedSeats } from '../repositories/seat.repo.js'
-import Redis from 'ioredis'
+import { Redis } from 'ioredis'
 
-const publisher = new Redis(env.redisUrl)
+const publisher = env.redisUrl ? new Redis(env.redisUrl) : new Redis()
 
 async function runOnce() {
   try {
@@ -20,7 +20,8 @@ async function runOnce() {
       }
     }
   } catch (err) {
-    logger.error('lockExpiry worker error', { error: err.message })
+    const error = err as Error
+    logger.error('lockExpiry worker error', { error: error.message })
   }
 }
 
@@ -31,7 +32,8 @@ async function main() {
 }
 
 main().catch(err => {
-  logger.error('Worker fatal error', { error: err.message })
+  const error = err as Error
+  logger.error('Worker fatal error', { error: error.message })
   process.exit(1)
 })
 

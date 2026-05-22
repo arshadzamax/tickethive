@@ -1,75 +1,72 @@
-import { Router } from 'express'
+import { Router, Request, Response, NextFunction } from 'express'
 import auth from '../middleware/auth.js'
 import * as promoRepo from '../repositories/promo.repo.js'
 import * as eventRepo from '../repositories/event.repo.js'
 import ApiError from '../utils/ApiError.js'
+import { requireUser, getParamAsString } from '../utils/params.js'
+import type { ApiResponse } from '../types/response.js'
+import { createPromoCodeSchema, validatePromoCodeSchema } from '../utils/schemas.js'
 
 const router = Router()
 
 /** GET /api/events/:id/promo-codes — organizer only */
-router.get('/events/:id/promo-codes', auth, async (req, res, next) => {
+router.get('/events/:id/promo-codes', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const event = await eventRepo.getEventById(req.params.id)
+    const event = await eventRepo.getEventById(getParamAsString(req, 'id'))
     if (!event) throw new ApiError(404, 'Event not found')
-    if (event.created_by !== req.user.id && req.user.role !== 'admin') {
+    const currentUser = requireUser(req)
+    if (event.created_by !== String(currentUser.id) && currentUser.role !== 'admin') {
       throw new ApiError(403, 'Not authorized')
     }
-    const codes = await promoRepo.getPromoCodesByEvent(req.params.id)
-    res.json(codes)
+    const codes = await promoRepo.getPromoCodesByEvent(getParamAsString(req, 'id'))
+    res.json({ success: true, data: codes } satisfies ApiResponse<typeof codes>)
   } catch (err) { next(err) }
 })
 
 /** POST /api/events/:id/promo-codes — organizer only */
-router.post('/events/:id/promo-codes', auth, async (req, res, next) => {
+router.post('/events/:id/promo-codes', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const event = await eventRepo.getEventById(req.params.id)
+    const event = await eventRepo.getEventById(getParamAsString(req, 'id'))
     if (!event) throw new ApiError(404, 'Event not found')
-    if (event.created_by !== req.user.id && req.user.role !== 'admin') {
+    const currentUser = requireUser(req)
+    if (event.created_by !== String(currentUser.id) && currentUser.role !== 'admin') {
       throw new ApiError(403, 'Not authorized')
     }
-    const { code, discountType, discountValue, maxUses, expiresAt } = req.body
-    if (!code?.trim()) throw new ApiError(400, 'Code is required')
-    if (!['pct', 'fixed'].includes(discountType)) throw new ApiError(400, 'discountType must be pct or fixed')
-    if (!discountValue || isNaN(discountValue) || discountValue <= 0) {
-      throw new ApiError(400, 'discountValue must be a positive number')
-    }
-    if (discountType === 'pct' && discountValue > 100) {
-      throw new ApiError(400, 'Percentage discount cannot exceed 100')
-    }
+    const { code, discountType, discountValue, maxUses, expiresAt } = createPromoCodeSchema.parse(req.body)
 
     const promo = await promoRepo.createPromoCode({
-      eventId: req.params.id,
-      createdBy: req.user.id,
+      eventId: getParamAsString(req, 'id'),
+      createdBy: String(currentUser.id),
       code: code.trim(),
       discountType,
       discountValue: Number(discountValue),
       maxUses: maxUses ? Number(maxUses) : null,
       expiresAt: expiresAt || null,
     })
-    res.status(201).json(promo)
+    res.status(201).json({ success: true, data: promo } satisfies ApiResponse<typeof promo>)
   } catch (err) { next(err) }
 })
 
 /** DELETE /api/events/:id/promo-codes/:codeId — organizer only */
-router.delete('/events/:id/promo-codes/:codeId', auth, async (req, res, next) => {
+router.delete('/events/:id/promo-codes/:codeId', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const event = await eventRepo.getEventById(req.params.id)
+    const event = await eventRepo.getEventById(getParamAsString(req, 'id'))
     if (!event) throw new ApiError(404, 'Event not found')
-    if (event.created_by !== req.user.id && req.user.role !== 'admin') {
+    const currentUser = requireUser(req)
+    if (event.created_by !== String(currentUser.id) && currentUser.role !== 'admin') {
       throw new ApiError(403, 'Not authorized')
     }
-    await promoRepo.deletePromoCode(req.params.codeId)
+    await promoRepo.deletePromoCode(getParamAsString(req, 'codeId'))
     res.status(204).end()
   } catch (err) { next(err) }
 })
 
 /** POST /api/promo-codes/validate — any authenticated user */
-router.post('/promo-codes/validate', auth, async (req, res, next) => {
+router.post('/promo-codes/validate', auth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { eventId, code } = req.body
-    if (!eventId || !code) throw new ApiError(400, 'eventId and code are required')
+    const { eventId, code } = validatePromoCodeSchema.parse(req.body)
     const result = await promoRepo.validatePromoCode(eventId, code)
-    res.json(result)
+    res.json({ success: true, data: result } satisfies ApiResponse<typeof result>)
   } catch (err) { next(err) }
 })
 

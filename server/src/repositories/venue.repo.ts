@@ -19,8 +19,8 @@ export async function getVenueById(venueId: string) {
 interface CreateVenueInput {
   name: string
   type: string
-  rows: number
-  cols: number
+  rows?: number | null
+  cols?: number | null
   totalCapacity: number
   defaultPremiumRows?: any[]
 }

@@ -1,22 +1,43 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { useSelector } from 'react-redux'
-import api from '../services/apiClient.js'
+import api from '../services/apiClient'
+
+type BookingOrder = {
+  id?: string | number
+  event_name?: string
+  seat_id?: string | number
+  category?: string
+  ticket_count?: number
+  total_amount?: number
+  price_per_unit?: number
+}
+
+type GroupBooking = {
+  total_amount?: number
+  status?: string
+}
+
+type BookingResponse = {
+  groupBooking?: GroupBooking
+  orders?: BookingOrder[]
+  totalAmount?: number
+}
 
 export default function BookingSuccessPage() {
-  const { groupBookingId } = useParams()
+  const { groupBookingId } = useParams<{ groupBookingId: string }>()
   const navigate = useNavigate()
-  const [booking, setBooking] = useState(null)
+  const [booking, setBooking] = useState<BookingResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchBooking() {
       try {
         const res = await api.get(`/group-bookings/${groupBookingId}`)
         setBooking(res.data)
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load booking details')
+      } catch (err: unknown) {
+        const unknownError = err as { response?: { data?: { message?: string } } }
+        setError(unknownError.response?.data?.message || 'Failed to load booking details')
       } finally {
         setLoading(false)
       }
@@ -104,7 +125,7 @@ export default function BookingSuccessPage() {
                       <span className="text-neutral-300">
                         {order.seat_id 
                           ? `Seat (${order.category || 'Standard'})`
-                          : `${order.ticket_count}× ${order.category || 'Standard'} Ticket${order.ticket_count > 1 ? 's' : ''}`
+                          : `${order.ticket_count ?? 0}× ${order.category || 'Standard'} Ticket${(order.ticket_count ?? 0) > 1 ? 's' : ''}`
                         }
                       </span>
                     </div>

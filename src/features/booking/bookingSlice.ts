@@ -1,50 +1,101 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-import api from '../../services/apiClient.js'
+import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import api from '../../services/apiClient'
+import type { ApiErrorPayload, BookingState, AddonItem } from '../../types'
 
-export const holdBooking = createAsyncThunk('booking/hold', async ({ eventId, bookingItems }, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/group-bookings/hold', { eventId, bookingItems })
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to hold booking' })
+type HoldBookingPayload = {
+  eventId: string | number
+  bookingItems: import('../../types').BookingItems
+}
+
+type AddonPayload = {
+  addonId: string
+  quantity: number
+}
+
+type ReleaseBookingPayload = {
+  eventId: string | number
+  groupLockId?: string | null
+  bookingItems: import('../../types').BookingItems
+}
+
+type CreateGroupBookingPayload = {
+  eventId: string | number
+  bookingItems: import('../../types').BookingItems
+  groupLockId?: string | null
+  addonItems?: AddonPayload[]
+  promoCode?: string | null
+}
+
+type GroupBookingResponse = {
+  groupBookingId: string | number
+  groupLockId?: string
+  [key: string]: unknown
+}
+
+type BookingThunkApiConfig = {
+  rejectValue: ApiErrorPayload
+}
+
+export const holdBooking = createAsyncThunk<GroupBookingResponse, HoldBookingPayload, BookingThunkApiConfig>(
+  'booking/hold',
+  async ({ eventId, bookingItems }, { rejectWithValue }) => {
+    try {
+      const res = await api.post('/group-bookings/hold', { eventId, bookingItems })
+      return res.data as GroupBookingResponse
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to hold booking' })
+    }
   }
-})
+)
 
-export const releaseBooking = createAsyncThunk('booking/release', async ({ eventId, groupLockId, bookingItems }, { rejectWithValue }) => {
-  try {
-    await api.post('/group-bookings/release', { eventId, groupLockId, bookingItems })
-    return groupLockId
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to release booking' })
+export const releaseBooking = createAsyncThunk<string | null, ReleaseBookingPayload, BookingThunkApiConfig>(
+  'booking/release',
+  async ({ eventId, groupLockId, bookingItems }, { rejectWithValue }) => {
+    try {
+      await api.post('/group-bookings/release', { eventId, groupLockId, bookingItems })
+      return groupLockId ?? null
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to release booking' })
+    }
   }
-})
+)
 
-export const createGroupBooking = createAsyncThunk('booking/createGroup', async ({ eventId, bookingItems, groupLockId, addonItems, promoCode }, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/group-bookings', {
-      eventId,
-      bookingItems,
-      groupLockId,
-      paymentStatus: 'pending',
-      addonItems: addonItems || [],
-      promoCode: promoCode || null,
-    })
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to create group booking' })
+export const createGroupBooking = createAsyncThunk<GroupBookingResponse, CreateGroupBookingPayload, BookingThunkApiConfig>(
+  'booking/createGroup',
+  async ({ eventId, bookingItems, groupLockId, addonItems, promoCode }, { rejectWithValue }) => {
+    try {
+      const res = await api.post('/group-bookings', {
+        eventId,
+        bookingItems,
+        groupLockId,
+        paymentStatus: 'pending',
+        addonItems: addonItems || [],
+        promoCode: promoCode || null,
+      })
+      return res.data as GroupBookingResponse
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to create group booking' })
+    }
   }
-})
+)
 
-export const getGroupBooking = createAsyncThunk('booking/getGroup', async (groupBookingId, { rejectWithValue }) => {
-  try {
-    const res = await api.get(`/group-bookings/${groupBookingId}`)
-    return res.data
-  } catch (e) {
-    return rejectWithValue(e.response?.data || { message: 'Failed to fetch group booking' })
+export const getGroupBooking = createAsyncThunk<unknown, string | number, BookingThunkApiConfig>(
+  'booking/getGroup',
+  async (groupBookingId, { rejectWithValue }) => {
+    try {
+      const res = await api.get(`/group-bookings/${groupBookingId}`)
+      return res.data as unknown
+    } catch (error) {
+      const err = error as { response?: { data?: ApiErrorPayload } }
+      return rejectWithValue(err.response?.data || { message: 'Failed to fetch group booking' })
+    }
   }
-})
+)
 
-const initialState = {
+const initialState: BookingState = {
   // Legacy support
   bookingStatus: 'idle',
   error: null,
@@ -69,49 +120,35 @@ const bookingSlice = createSlice({
   name: 'booking',
   initialState,
   reducers: {
-    // Select a seat (SEATED events)
-    selectSeat: (state, action) => {
+    selectSeat: (state, action: PayloadAction<string | number>) => {
       const seatId = action.payload
-      if (!state.selectedItems.includes(seatId)) {
-        state.selectedItems.push(seatId)
+      if (!Array.isArray(state.selectedItems) || !state.selectedItems.includes(seatId)) {
+        state.selectedItems = Array.isArray(state.selectedItems) ? [...state.selectedItems, seatId] : [seatId]
       }
     },
-
-    // Deselect a seat
-    deselectSeat: (state, action) => {
+    deselectSeat: (state, action: PayloadAction<string | number>) => {
       const seatId = action.payload
-      state.selectedItems = state.selectedItems.filter(id => id !== seatId)
+      if (Array.isArray(state.selectedItems)) {
+        state.selectedItems = state.selectedItems.filter(id => id !== seatId)
+      }
     },
-
-    // Clear all selected seats
     clearSelectedSeats: (state) => {
       state.selectedItems = []
       state.groupLockId = null
     },
-
-    // Set ticket quantity and category (GENERAL events)
-    setTicketSelection: (state, action) => {
-      const { quantity, category } = action.payload
-      state.selectedItems = { quantity, category }
+    setTicketSelection: (state, action: PayloadAction<{ quantity: number; category: string }>) => {
+      state.selectedItems = { quantity: action.payload.quantity, category: action.payload.category }
     },
-
-    // Clear ticket selection
     clearTicketSelection: (state) => {
       state.selectedItems = []
       state.groupLockId = null
     },
-
-    // Set event type
-    setEventType: (state, action) => {
+    setEventType: (state, action: PayloadAction<'SEATED' | 'GENERAL' | null>) => {
       state.eventType = action.payload
     },
-
-    // Set total price
-    setTotalPrice: (state, action) => {
+    setTotalPrice: (state, action: PayloadAction<number>) => {
       state.totalPrice = action.payload
     },
-
-    // Reset booking state
     resetBooking: (state) => {
       state.selectedItems = []
       state.groupLockId = null
@@ -125,9 +162,7 @@ const bookingSlice = createSlice({
       state.promoValidation = null
       state.discountAmount = 0
     },
-
-    // Set an add-on quantity (0 = remove)
-    setAddonItem: (state, action) => {
+    setAddonItem: (state, action: PayloadAction<AddonItem>) => {
       const { addonId, name, quantity, pricePerUnit } = action.payload
       const existing = state.addonItems.findIndex(a => a.addonId === addonId)
       if (quantity <= 0) {
@@ -138,25 +173,22 @@ const bookingSlice = createSlice({
         state.addonItems.push({ addonId, name, quantity, pricePerUnit })
       }
     },
-
-    // Set promo code input
-    setPromoCode: (state, action) => {
+    setPromoCode: (state, action: PayloadAction<string>) => {
       state.promoCode = action.payload
     },
-
-    // Set promo validation result
-    setPromoValidation: (state, action) => {
+    setPromoValidation: (state, action: PayloadAction<BookingState['promoValidation']>) => {
       state.promoValidation = action.payload
       if (!action.payload || !action.payload.valid) {
         state.discountAmount = 0
       }
     },
-
-    // Compute discount from ticket subtotal
-    applyDiscount: (state, action) => {
+    applyDiscount: (state, action: PayloadAction<{ ticketSubtotal: number }>) => {
       const { ticketSubtotal } = action.payload
       const promo = state.promoValidation
-      if (!promo || !promo.valid) { state.discountAmount = 0; return }
+      if (!promo || !promo.valid) {
+        state.discountAmount = 0
+        return
+      }
       if (promo.discountType === 'pct') {
         state.discountAmount = Math.round((ticketSubtotal * promo.discountValue / 100) * 100) / 100
       } else {
@@ -173,7 +205,7 @@ const bookingSlice = createSlice({
       })
       .addCase(holdBooking.fulfilled, (state, action) => {
         state.holdingStatus = 'success'
-        state.groupLockId = action.payload.groupLockId
+        state.groupLockId = action.payload.groupLockId ?? null
       })
       .addCase(holdBooking.rejected, (state, action) => {
         state.holdingStatus = 'failed'
@@ -190,7 +222,7 @@ const bookingSlice = createSlice({
         state.holdingStatus = 'idle'
       })
       .addCase(releaseBooking.rejected, (state, action) => {
-        state.error = action.payload?.message || 'Failed to release booking'
+        state.error = (action.payload as ApiErrorPayload)?.message || 'Failed to release booking'
       })
 
       // Create group booking

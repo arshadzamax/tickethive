@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg'
 import { query } from '../config/db.js'
 
 export async function getPromoCodesByEvent(eventId: string) {
@@ -11,12 +12,12 @@ export async function getPromoCodesByEvent(eventId: string) {
 
 interface CreatePromoCodeInput {
   eventId: string
-  createdBy?: string
+  createdBy?: string | null
   code: string
   discountType: string
   discountValue: number
-  maxUses?: number
-  expiresAt?: string
+  maxUses?: number | null
+  expiresAt?: string | null
 }
 
 export async function createPromoCode({ eventId, createdBy, code, discountType, discountValue, maxUses, expiresAt }: CreatePromoCodeInput) {
@@ -64,7 +65,7 @@ export async function validatePromoCode(eventId: string, code: string) {
 /**
  * Atomically increment uses_count. Call inside a DB transaction.
  */
-export async function incrementPromoUse(client: any, promoId: string) {
+export async function incrementPromoUse(client: PoolClient, promoId: string) {
   await client.query(
     'UPDATE promo_codes SET uses_count = uses_count + 1 WHERE id=$1',
     [promoId]

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setTicketSelection, clearTicketSelection } from '../../features/booking/bookingSlice'
+import type { GeneralTicketBookingProps } from '../../types'
+import type { RootState } from '../../app/store'
 
-export default function GeneralTicketBooking({ event, eventType, premiumPrice, normalPrice }) {
+export default function GeneralTicketBooking({ event, eventType, premiumPrice, normalPrice }: GeneralTicketBookingProps) {
   const dispatch = useDispatch()
-  const selectedItems = useSelector(state => state.booking.selectedItems)
-  const [normalQty, setNormalQty] = useState(0)
-  const [premiumQty, setPremiumQty] = useState(0)
-  const [selectedCategory, setSelectedCategory] = useState('NORMAL')
+  const selectedItems = useSelector((state: RootState) => state.booking.selectedItems)
+  const [normalQty, setNormalQty] = useState<number>(0)
+  const [premiumQty, setPremiumQty] = useState<number>(0)
+  const [selectedCategory, setSelectedCategory] = useState<'NORMAL' | 'PREMIUM'>('NORMAL')
 
   // Update Redux when quantities change
   useEffect(() => {
@@ -43,7 +45,7 @@ export default function GeneralTicketBooking({ event, eventType, premiumPrice, n
     dispatch(clearTicketSelection())
   }
 
-  const switchCategory = (category) => {
+  const switchCategory = (category: 'NORMAL' | 'PREMIUM'): void => {
     setSelectedCategory(category)
   }
 
@@ -54,7 +56,9 @@ export default function GeneralTicketBooking({ event, eventType, premiumPrice, n
       {/* Event Info */}
       <div className="mb-6 p-4 bg-slate-800 rounded-lg border border-slate-700">
         <h4 className="text-lg font-semibold text-white mb-2">{event?.name}</h4>
-        <p className="text-slate-400 text-sm">{new Date(event?.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="text-slate-400 text-sm">
+          {event?.date ? new Date(event.date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+        </p>
       </div>
 
       {/* Ticket Type Selection */}

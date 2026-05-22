@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
 
 
-function getArg(name, defaultValue) {
+function getArg(name: string, defaultValue: string): string {
   const idx = process.argv.indexOf(name)
   if (idx === -1) return defaultValue
-  return process.argv[idx + 1]
+  return process.argv[idx + 1] ?? defaultValue
 }
 
 async function dropSchema() {
@@ -108,7 +108,14 @@ async function seedAdmin() {
   console.log('created admin user (admin@tickethive.com / admin123)')
 }
 
-async function seedVenue(name, type, rows, cols, capacity, premiumRows) {
+async function seedVenue(
+  name: string,
+  type: string,
+  rows: number | null,
+  cols: number | null,
+  capacity: number,
+  premiumRows: number[]
+): Promise<string> {
   const res = await pool.query(
     `INSERT INTO venues (name, type, rows, cols, total_capacity, default_premium_rows)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -120,7 +127,7 @@ async function seedVenue(name, type, rows, cols, capacity, premiumRows) {
   return venue.id
 }
 
-async function seedEvent(venueId, name, priceNormal = 100, pricePremium = 150) {
+async function seedEvent(venueId: string, name: string, priceNormal = 100, pricePremium = 150): Promise<string> {
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   tomorrow.setHours(19, 0, 0, 0)
@@ -136,7 +143,7 @@ async function seedEvent(venueId, name, priceNormal = 100, pricePremium = 150) {
   return event.id
 }
 
-async function seedSeats(eventId, rows = 5, cols = 10, premiumRows = [1, 2]) {
+async function seedSeats(eventId: string, rows = 5, cols = 10, premiumRows: number[] = [1, 2]): Promise<void> {
   for (let r = 1; r <= rows; r++) {
     for (let n = 1; n <= cols; n++) {
       const category = premiumRows.includes(r) ? 'PREMIUM' : 'NORMAL'
@@ -149,7 +156,7 @@ async function seedSeats(eventId, rows = 5, cols = 10, premiumRows = [1, 2]) {
   console.log(`inserted ${rows * cols} seats for event ${eventId}`)
 }
 
-async function seedOrders(eventId, count = 0, userIds = ['user1', 'user2']) {
+async function seedOrders(eventId: string, count = 0, userIds: string[] = ['user1', 'user2']): Promise<void> {
   if (count <= 0) return
   const res = await pool.query(
     'SELECT id FROM seats WHERE event_id = $1 AND status = $2 ORDER BY id LIMIT $3',

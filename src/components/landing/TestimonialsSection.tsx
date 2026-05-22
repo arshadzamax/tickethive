@@ -1,6 +1,6 @@
 import React from 'react'
-import ScrollReveal from './ScrollReveal.jsx'
-import { testimonials } from './landingData.js'
+import ScrollReveal from './ScrollReveal.tsx'
+import { testimonials } from './landingData'
 
 export default function TestimonialsSection() {
     return (

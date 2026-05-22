@@ -5,11 +5,19 @@ import MultiSeatSelector from '../../components/booking/MultiSeatSelector'
 import GeneralTicketBooking from '../../components/booking/GeneralTicketBooking'
 import BookingCart from '../../components/booking/BookingCart'
 import AddonsPanel from './AddonsPanel'
+import type { Event, EffectivePrices } from '../../types'
+import type { RootState } from '../../app/store'
 
-export default function BookingPanel({ event, eventId, effectivePrices }) {
+interface BookingPanelProps {
+  event?: Event & { price_normal?: number; price_premium?: number; premium_rows?: number[]; event_type?: string }
+  eventId?: string | number
+  effectivePrices?: EffectivePrices | null
+}
+
+export default function BookingPanel({ event, eventId, effectivePrices }: BookingPanelProps) {
   const dispatch = useDispatch()
-  const eventType = event?.event_type || 'SEATED'
-  const booking = useSelector(state => state.booking)
+  const eventType = event?.event_type === 'GENERAL' ? 'GENERAL' : 'SEATED'
+  const booking = useSelector((state: RootState) => state.booking)
   const seatsLocked = booking.holdingStatus === 'success'
 
   useEffect(() => {
@@ -17,8 +25,8 @@ export default function BookingPanel({ event, eventId, effectivePrices }) {
   }, [eventType, dispatch])
 
   // Use effective prices if available, else fall back to event prices
-  const normalPrice = effectivePrices?.normalPrice ?? event?.price_normal
-  const premiumPrice = effectivePrices?.premiumPrice ?? event?.price_premium
+  const normalPrice = Number(effectivePrices?.normalPrice ?? event?.price_normal ?? 0)
+  const premiumPrice = Number(effectivePrices?.premiumPrice ?? event?.price_premium ?? 0)
 
   if (!event) {
     return (
@@ -35,7 +43,7 @@ export default function BookingPanel({ event, eventId, effectivePrices }) {
         <div className="lg:col-span-2 space-y-4">
           {eventType === 'SEATED' ? (
             <MultiSeatSelector
-              eventId={eventId}
+              eventId={eventId ?? ''}
               eventType={eventType}
               premiumPrice={premiumPrice}
               normalPrice={normalPrice}
@@ -56,7 +64,7 @@ export default function BookingPanel({ event, eventId, effectivePrices }) {
 
         {/* Booking Cart Sidebar */}
         <div>
-          <BookingCart event={event} eventType={eventType} effectivePrices={effectivePrices} />
+          <BookingCart event={event} eventType={eventType} effectivePrices={effectivePrices ?? undefined} />
         </div>
       </div>
 

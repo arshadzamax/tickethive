@@ -1,3 +1,4 @@
+import type { Request, Response, NextFunction } from 'express'
 import * as orderRepo from '../repositories/order.repo.js'
 import * as bookingStrategy from '../services/bookingStrategy.service.js'
 import * as groupLockService from '../services/groupLock.service.js'
@@ -5,12 +6,15 @@ import * as addonRepo from '../repositories/addon.repo.js'
 import * as promoRepo from '../repositories/promo.repo.js'
 import { getClient } from '../config/db.js'
 import ApiError from '../utils/ApiError.js'
+import { requireUser, getParamAsString } from '../utils/params.js'
+import { holdBookingSchema, releaseBookingSchema, createGroupBookingSchema } from '../utils/schemas.js'
+import type { ApiResponse } from '../types/response.js'
 
-export async function listOrders(req, res, next) {
+export async function listOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
+    const userId = String(requireUser(req).id)
     const orders = await orderRepo.getOrdersByUser(userId)
-    res.json(orders)
+    res.json({ success: true, data: orders } satisfies ApiResponse<typeof orders>)
   } catch (err) {
     next(err)
   }
@@ -19,29 +23,30 @@ export async function listOrders(req, res, next) {
 /**
  * Hold/reserve seats or tickets for a group booking
  */
-export async function holdBooking(req, res, next) {
+export async function holdBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
-    const { eventId, bookingItems } = req.body
-
-    if (!eventId) throw new ApiError(400, 'Event ID is required')
-    if (!bookingItems) throw new ApiError(400, 'Booking items required')
+    const userId = String(requireUser(req).id)
+    const { eventId, bookingItems } = holdBookingSchema.parse(req.body)
 
     // Validate booking
     const validation = await bookingStrategy.bookingService.validateBooking(eventId, bookingItems)
-    if (!validation.allAvailable && !validation.isAvailable) {
+    const isAvailable = 'allAvailable' in validation ? validation.allAvailable : validation.isAvailable
+    if (!isAvailable) {
       throw new ApiError(409, 'Items not available')
     }
 
     // Hold booking
     const holdResult = await bookingStrategy.bookingService.holdBooking(eventId, userId, bookingItems)
+    const lockedItems = 'lockedSeats' in holdResult ? holdResult.lockedSeats : holdResult.reservedTickets
 
     res.json({
       success: true,
-      groupLockId: holdResult.groupLockId,
-      lockedItems: holdResult.lockedSeats || holdResult.reservedTickets,
-      message: 'Booking held successfully'
-    })
+      data: {
+        groupLockId: holdResult.groupLockId,
+        lockedItems,
+        message: 'Booking held successfully'
+      }
+    } satisfies ApiResponse<{ groupLockId: string; lockedItems: (string | number)[]; message: string }>)
   } catch (err) {
     next(err)
   }
@@ -50,16 +55,14 @@ export async function holdBooking(req, res, next) {
 /**
  * Release a held booking
  */
-export async function releaseBooking(req, res, next) {
+export async function releaseBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
-    const { eventId, groupLockId, bookingItems } = req.body
-
-    if (!eventId || !groupLockId) throw new ApiError(400, 'Event ID and group lock ID required')
+    const userId = String(requireUser(req).id)
+    const { eventId, groupLockId, bookingItems } = releaseBookingSchema.parse(req.body)
 
     await bookingStrategy.bookingService.releaseBooking(eventId, userId, groupLockId, bookingItems)
 
-    res.json({ success: true, message: 'Booking released' })
+    res.json({ success: true, data: { message: 'Booking released' } } satisfies ApiResponse<any>)
   } catch (err) {
     next(err)
   }
@@ -68,20 +71,18 @@ export async function releaseBooking(req, res, next) {
 /**
  * Create a group booking (multiple seats/tickets in one order)
  */
-export async function createGroupBooking(req, res, next) {
+export async function createGroupBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
-    const { eventId, bookingItems, groupLockId, paymentStatus, addonItems, promoCode } = req.body
-
-    if (!eventId) throw new ApiError(400, 'Event ID is required')
-    if (!bookingItems) throw new ApiError(400, 'Booking items required')
+    const userId = String(requireUser(req).id)
+    const { eventId, bookingItems, groupLockId, paymentStatus, addonItems, promoCode } = createGroupBookingSchema.parse(req.body)
 
     // --- Validate promo code upfront (before any DB writes) ---
+
     let promoValidation = null
-    if (promoCode) {
+    if (promoCode && typeof promoCode === 'string') {
       promoValidation = await promoRepo.validatePromoCode(eventId, promoCode)
       if (!promoValidation.valid) {
-        throw new ApiError(400, promoValidation.reason)
+        throw new ApiError(400, promoValidation.reason || 'Invalid promo code')
       }
     }
 
@@ -111,11 +112,11 @@ export async function createGroupBooking(req, res, next) {
         if (promoValidation) {
           const ticketSubtotal = Number(result.totalAmount)
           if (promoValidation.discountType === 'pct') {
-            discountAmount = Math.round((ticketSubtotal * promoValidation.discountValue / 100) * 100) / 100
+            discountAmount = Math.round((ticketSubtotal * promoValidation.discountValue! / 100) * 100) / 100
           } else {
-            discountAmount = Math.min(promoValidation.discountValue, ticketSubtotal)
+            discountAmount = Math.min(promoValidation.discountValue!, ticketSubtotal)
           }
-          await promoRepo.incrementPromoUse(client, promoValidation.promoId)
+          await promoRepo.incrementPromoUse(client, promoValidation.promoId!)
         }
 
         const newTotal = Math.max(0, Number(result.totalAmount) + addonTotal - discountAmount)
@@ -151,9 +152,11 @@ export async function createGroupBooking(req, res, next) {
 
     res.status(201).json({
       success: true,
-      ...result,
-      message: `Group booking created with ${result.itemCount} item(s)`
-    })
+      data: {
+        ...result,
+        message: `Group booking created with ${result.itemCount} item(s)`
+      }
+    } satisfies ApiResponse<any>)
   } catch (err) {
     next(err)
   }
@@ -162,10 +165,10 @@ export async function createGroupBooking(req, res, next) {
 /**
  * Get group booking details
  */
-export async function getGroupBooking(req, res, next) {
+export async function getGroupBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
-    const { groupBookingId } = req.params
+    const userId = String(requireUser(req).id)
+    const groupBookingId = getParamAsString(req, 'groupBookingId')
 
     const groupBooking = await orderRepo.getGroupBookingById(groupBookingId)
     if (!groupBooking) throw new ApiError(404, 'Group booking not found')
@@ -174,11 +177,14 @@ export async function getGroupBooking(req, res, next) {
     const orders = await orderRepo.getOrdersByGroupBooking(groupBookingId)
 
     res.json({
-      groupBooking,
-      orders,
-      itemCount: orders.length,
-      totalAmount: groupBooking.total_amount
-    })
+      success: true,
+      data: {
+        groupBooking,
+        orders,
+        itemCount: orders.length,
+        totalAmount: groupBooking.total_amount
+      }
+    } satisfies ApiResponse<any>)
   } catch (err) {
     next(err)
   }
@@ -187,11 +193,11 @@ export async function getGroupBooking(req, res, next) {
 /**
  * List user's group bookings
  */
-export async function listGroupBookings(req, res, next) {
+export async function listGroupBookings(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = req.user.id
+    const userId = String(requireUser(req).id)
     const groupBookings = await orderRepo.getGroupBookingsByUser(userId)
-    res.json(groupBookings)
+    res.json({ success: true, data: groupBookings } satisfies ApiResponse<typeof groupBookings>)
   } catch (err) {
     next(err)
   }

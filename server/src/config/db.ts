@@ -10,7 +10,7 @@ const pool = new Pool({
   idleTimeoutMillis: 30000
 })
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error): void => {
   logger.error('Unexpected PostgreSQL error', { err })
 })
 

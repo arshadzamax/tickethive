@@ -1,5 +1,5 @@
-import axios from 'axios'
-import { API_BASE_URL } from '../utils/constants.js'
+import axios, { type AxiosRequestConfig } from 'axios'
+import { API_BASE_URL } from '../utils/constants'
 
 const TOKEN_KEY = 'th_token'
 
@@ -13,19 +13,23 @@ api.interceptors.request.use(cfg => {
     cfg.headers = cfg.headers || {}
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) {
-      cfg.headers['Authorization'] = `Bearer ${token}`
+      (cfg.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`
     }
-    // Also send x-client-id for backward compat with WebSocket identity
     const clientId = localStorage.getItem('th_client_id')
     if (clientId) {
-      cfg.headers['x-client-id'] = clientId
+      (cfg.headers as Record<string, string>)['x-client-id'] = clientId
     }
   } catch { }
   return cfg
 })
 
 api.interceptors.response.use(
-  r => r,
+  r => {
+    if (r.data && typeof r.data === 'object' && r.data.success === true && 'data' in r.data) {
+      r.data = r.data.data
+    }
+    return r
+  },
   e => {
     if (e.response?.status === 401) {
       const hadToken = !!localStorage.getItem(TOKEN_KEY)

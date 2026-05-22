@@ -4,12 +4,20 @@ import logger from '../utils/logger.js'
 const LOCK_PREFIX = 'group_lock:'
 const LOCK_TTL_SECONDS = 300 // 5 minutes
 
+interface GroupLockData {
+  userId: string
+  eventId: string | number
+  itemIds: (string | number)[]
+  itemType: string
+  acquiredAt: string
+}
+
 /**
  * Acquire locks on multiple seats/tickets atomically
  * For SEATED: locks multiple seats at once
  * For GENERAL: locks ticket capacity reservation
  */
-export async function acquireGroupLock(eventId, itemIds, userId, itemType = 'seat') {
+export async function acquireGroupLock(eventId: string | number, itemIds: (string | number)[], userId: string, itemType: string = 'seat') {
   const groupLockId = `${LOCK_PREFIX}${eventId}:${userId}:${Date.now()}`
   const lockValue = JSON.stringify({
     userId,
@@ -21,7 +29,7 @@ export async function acquireGroupLock(eventId, itemIds, userId, itemType = 'sea
 
   try {
     // Set group lock
-    const result = await redis.set(groupLockId, lockValue, 'NX', 'EX', LOCK_TTL_SECONDS)
+    const result = await redis.set(groupLockId, lockValue, 'EX', LOCK_TTL_SECONDS, 'NX')
     
     if (!result) {
       logger.warn(`Failed to acquire group lock for user ${userId}`)
@@ -42,13 +50,13 @@ export async function acquireGroupLock(eventId, itemIds, userId, itemType = 'sea
 /**
  * Release a group lock and all associated item locks
  */
-export async function releaseGroupLock(groupLockId, userId) {
+export async function releaseGroupLock(groupLockId: string, userId: string) {
   try {
     // Get group lock details
     const lockData = await redis.get(groupLockId)
     if (!lockData) return false
 
-    const { itemIds } = JSON.parse(lockData)
+    const { itemIds } = JSON.parse(lockData) as GroupLockData
 
     // Release all individual locks (if they exist)
     if (itemIds && Array.isArray(itemIds)) {
@@ -73,25 +81,29 @@ export async function releaseGroupLock(groupLockId, userId) {
 /**
  * Get all active locks for a user
  */
-export async function getUserLocks(userId) {
+export async function getUserLocks(userId: string) {
   try {
     const lockIds = await redis.smembers(`user_locks:${userId}`)
     if (!lockIds || lockIds.length === 0) return []
 
     const pipeline = redis.pipeline()
-    lockIds.forEach(lockId => {
+    lockIds.forEach((lockId: string) => {
       pipeline.get(lockId)
     })
     const results = await pipeline.exec()
 
-    return results
-      .map((result, idx) => {
-        if (result && result[1]) {
-          return { id: lockIds[idx], data: JSON.parse(result[1]) }
+    if (!results) return []
+
+    const mapped: { id: string; data: GroupLockData }[] = []
+    results.forEach((result: [Error | null, unknown], idx: number) => {
+      if (result && result[1]) {
+        const lockId = lockIds[idx]
+        if (lockId) {
+          mapped.push({ id: lockId, data: JSON.parse(String(result[1])) as GroupLockData })
         }
-        return null
-      })
-      .filter(Boolean)
+      }
+    })
+    return mapped
   } catch (err) {
     logger.error('Error getting user locks', { err, userId })
     return []
@@ -101,21 +113,27 @@ export async function getUserLocks(userId) {
 /**
  * Cleanup expired locks for a user
  */
-export async function cleanupUserLocks(userId) {
+export async function cleanupUserLocks(userId: string) {
   try {
     const lockIds = await redis.smembers(`user_locks:${userId}`)
     if (!lockIds || lockIds.length === 0) return
 
     const pipeline = redis.pipeline()
-    lockIds.forEach(lockId => {
+    lockIds.forEach((lockId: string) => {
       pipeline.get(lockId)
     })
     const results = await pipeline.exec()
 
-    const expiredLockIds = []
-    for (let i = 0; i < results.length; i++) {
-      if (!results[i] || !results[i][1]) {
-        expiredLockIds.push(lockIds[i])
+    const expiredLockIds: string[] = []
+    if (results) {
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        if (!result || !result[1]) {
+          const lockId = lockIds[i]
+          if (lockId) {
+            expiredLockIds.push(lockId)
+          }
+        }
       }
     }
 

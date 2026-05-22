@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, Link } from 'react-router-dom'
-import { registerUser, selectAuthLoading, selectAuthError, selectUser, clearAuthError } from '../features/auth/authSlice.js'
+import { registerUser, selectAuthLoading, selectAuthError, selectUser, clearAuthError } from '../features/auth/authSlice'
 
 export default function RegisterPage() {
     const dispatch = useDispatch()
@@ -25,7 +25,7 @@ export default function RegisterPage() {
         }
     }, [user, navigate])
 
-    const onSubmit = (e) => {
+    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setLocalError('')
         if (password !== confirmPassword) {

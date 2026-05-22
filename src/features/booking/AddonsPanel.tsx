@@ -2,11 +2,19 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setAddonItem } from './bookingSlice'
 import api from '../../services/apiClient'
+import type { RootState } from '../../app/store'
 
-export default function AddonsPanel({ eventId }) {
+type Addon = {
+  id: string | number
+  name: string
+  description?: string
+  price: number
+}
+
+export default function AddonsPanel({ eventId }: { eventId?: string | number }) {
   const dispatch = useDispatch()
-  const addonItems = useSelector(s => s.booking.addonItems)
-  const [addons, setAddons] = useState([])
+  const addonItems = useSelector((state: RootState) => state.booking.addonItems)
+  const [addons, setAddons] = useState<Addon[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -19,13 +27,13 @@ export default function AddonsPanel({ eventId }) {
   if (loading) return null
   if (addons.length === 0) return null
 
-  const getQty = (addonId) => addonItems.find(a => a.addonId === addonId)?.quantity || 0
+  const getQty = (addonId: string | number) => addonItems.find(a => a.addonId === addonId)?.quantity || 0
 
-  const change = (addon, delta) => {
+  const change = (addon: Addon, delta: number) => {
     const current = getQty(addon.id)
     const next = Math.max(0, current + delta)
     dispatch(setAddonItem({
-      addonId: addon.id,
+      addonId: String(addon.id),
       name: addon.name,
       quantity: next,
       pricePerUnit: Number(addon.price),

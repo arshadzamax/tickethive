@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { loginUser, selectAuthLoading, selectAuthError, selectUser, clearAuthError } from '../features/auth/authSlice.js'
+import { loginUser, selectAuthLoading, selectAuthError, selectUser, clearAuthError } from '../features/auth/authSlice'
 
 export default function LoginPage() {
     const dispatch = useDispatch()
@@ -27,7 +27,7 @@ export default function LoginPage() {
         }
     }, [user, navigate, redirectTo])
 
-    const onSubmit = (e) => {
+    const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         dispatch(loginUser({ email, password }))
     }

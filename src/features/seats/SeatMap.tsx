@@ -1,15 +1,17 @@
 import React, { useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchSeats } from './seatSlice.js'
-import { makeSelectSeatIds, selectAllSeats, selectLoading } from './seatSelectors.js'
-import SeatItem from './SeatItem.jsx'
+import { fetchSeats } from './seatSlice'
+import { makeSelectSeatIds, selectAllSeats, selectLoading } from './seatSelectors'
+import SeatItem from './SeatItem.tsx'
+import type { Seat } from '../../types'
+import type { RootState } from '../../app/store'
 
-export default function SeatMap({ eventId }) {
+export default function SeatMap({ eventId }: { eventId?: string | number }) {
   const dispatch = useDispatch()
   const selectIds = useMemo(() => makeSelectSeatIds(), [])
-  const seatIds = useSelector(selectIds)
-  const seats = useSelector(selectAllSeats)
-  const loading = useSelector(selectLoading)
+  const seatIds = useSelector((state: RootState) => selectIds(state))
+  const seats = useSelector((state: RootState) => selectAllSeats(state))
+  const loading = useSelector((state: RootState) => selectLoading(state))
 
   useEffect(() => {
     if (eventId) dispatch(fetchSeats(eventId))
@@ -17,8 +19,8 @@ export default function SeatMap({ eventId }) {
 
   const dims = useMemo(() => {
     if (!seats.length) return { width: 800, height: 400 }
-    const rows = new Set(seats.map(s => s.row)).size
-    const cols = Math.max(...seats.map(s => s.number))
+    const rows = new Set(seats.map(s => Number(s.row ?? 0))).size
+    const cols = Math.max(0, ...seats.map(s => Number(s.number ?? 0)))
     const cell = 24
     const gap = 8
     const width = 40 + cols * (cell + gap)

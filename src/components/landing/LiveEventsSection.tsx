@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchEvents, selectAllEvents, selectEventsLoading, selectEventsError } from '../../features/events/eventSlice.js'
-import { selectUser, selectIsAdmin } from '../../features/auth/authSlice.js'
-import ScrollReveal from './ScrollReveal.jsx'
+import { fetchEvents, selectAllEvents, selectEventsLoading, selectEventsError } from '../../features/events/eventSlice'
+import { selectUser, selectIsAdmin } from '../../features/auth/authSlice'
+import ScrollReveal from './ScrollReveal.tsx'
+import type { Event } from '../../types'
 
-const formatDate = (dateStr) => {
+const formatDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return 'TBA'
     const d = new Date(dateStr)
     return d.toLocaleDateString('en-US', {
         weekday: 'short',
@@ -32,7 +34,7 @@ export default function LiveEventsSection() {
         dispatch(fetchEvents())
     }, [dispatch])
 
-    const handleEventClick = (eventId) => {
+    const handleEventClick = (eventId: string | number): void => {
         if (!user) {
             navigate('/login', { state: { from: `/events/${eventId}/booking` } })
         } else if (isAdmin) {
@@ -83,7 +85,7 @@ export default function LiveEventsSection() {
             )}
 
             {(() => {
-                const upcomingEvents = events.filter(e => new Date(e.date) >= new Date())
+                const upcomingEvents = events.filter(e => e.date && new Date(e.date) >= new Date())
 
                 if (!loading && !error && upcomingEvents.length === 0) return (
                     <div className="text-center py-14">
@@ -143,7 +145,7 @@ export default function LiveEventsSection() {
             })()}
 
             {/* CTA for unauthenticated users */}
-            {!user && !loading && events.filter(e => new Date(e.date) >= new Date()).length > 0 && (
+            {!user && !loading && events.filter(e => e.date && new Date(e.date) >= new Date()).length > 0 && (
                 <ScrollReveal delay={200}>
                     <div className="mt-12 text-center">
                         <p className="text-xs text-neutral-500 mb-3">Free to browse. Sign in to reserve your spot.</p>

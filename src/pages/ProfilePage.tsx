@@ -1,11 +1,96 @@
-import { useDispatch, useSelector } from 'react-redux'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { selectUser, selectIsAdmin } from '../features/auth/authSlice.js'
-import { updateEvent, cancelEvent, deleteEvent } from '../features/events/eventSlice.js'
-import api from '../services/apiClient.js'
-import { useState, useEffect } from 'react'
+import { selectUser, selectIsAdmin } from '../features/auth/authSlice'
+import { updateEvent, cancelEvent, deleteEvent } from '../features/events/eventSlice'
+import api from '../services/apiClient'
+import { useAppDispatch, useAppSelector } from '../app/hooks'
+import type { User } from '../types'
 
-function formatDate(dateStr, opts = {}) {
+type ProfileStatus = 'completed' | 'paid' | 'pending' | 'cancelled'
+
+type ProfileTab = 'bookings' | 'upcoming' | 'history' | 'hosted'
+
+type ProfileAction = {
+  label: string
+  to: string
+}
+
+type EmptyStateProps = {
+  icon: string
+  title: string
+  description: string
+  action?: ProfileAction
+}
+
+type BookingOrder = {
+  id?: string | number
+  group_booking_id?: string | number
+  seat_id?: string | number
+  seat_row?: string | number
+  seat_number?: string | number
+  ticket_count?: number
+  category?: string
+  total_amount?: number
+  price_per_unit?: number
+}
+
+type Booking = {
+  id: string | number
+  event_date: string
+  event_type?: string
+  event_name?: string
+  organiser?: string
+  status?: ProfileStatus
+  total_amount?: number
+  created_at?: string
+  event_id?: string | number
+}
+
+type HostedEvent = {
+  id: string | number
+  date?: string
+  status?: string
+  name?: string
+  event_type?: string
+  total_capacity?: number
+  price_normal?: number
+  price_premium?: number
+}
+
+type ProfileData = {
+  user?: { memberSince?: string }
+  stats: {
+    totalBookings: number
+    totalSpent: number
+    uniqueEvents: number
+    eventsAttended: number
+    eventsHosted: number
+    totalOrders: number
+  }
+  bookings: Booking[]
+  orders: BookingOrder[]
+  hostedEvents: HostedEvent[]
+}
+
+type Addon = {
+  id: string | number
+  name?: string
+  description?: string
+  price?: number
+  max_quantity?: number
+}
+
+type Promo = {
+  id: string | number
+  code?: string
+  discount_type?: 'pct' | 'flat' | string
+  discount_value?: number
+  uses_count?: number
+  max_uses?: number
+  expires_at?: string
+}
+
+function formatDate(dateStr: string | undefined, opts: Intl.DateTimeFormatOptions = {}) {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
   return d.toLocaleDateString('en-US', {
@@ -13,33 +98,34 @@ function formatDate(dateStr, opts = {}) {
   })
 }
 
-function formatCurrency(amount) {
+function formatCurrency(amount: number | string | null | undefined) {
   return `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-function getInitials(email) {
+function getInitials(email: string | null | undefined) {
   if (!email) return '?'
-  const parts = email.split('@')[0]
+  const parts = email.split('@')[0] || ''
   return parts.slice(0, 2).toUpperCase()
 }
 
-function StatusBadge({ status }) {
-  const styles = {
+function StatusBadge({ status }: { status?: ProfileStatus }) {
+  const styles: Record<ProfileStatus, string> = {
     completed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
     paid: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
     pending: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
     cancelled: 'bg-red-500/15 text-red-400 border-red-500/25',
   }
+  const currentStatus: ProfileStatus = status && styles[status] ? status : 'pending'
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border uppercase tracking-wider ${styles[status] || styles.pending}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border uppercase tracking-wider ${styles[currentStatus]}`}>
       <span className="w-1.5 h-1.5 rounded-full bg-current" />
-      {status || 'pending'}
+      {currentStatus}
     </span>
   )
 }
 
-function StatCard({ icon, label, value, accent = 'emerald' }) {
-  const accentMap = {
+function StatCard({ icon, label, value, accent = 'emerald' }: { icon: string; label: string; value: string | number; accent?: 'emerald' | 'violet' | 'amber' | 'blue' | 'rose' | 'cyan' }) {
+  const accentMap: Record<'emerald' | 'violet' | 'amber' | 'blue' | 'rose' | 'cyan', string> = {
     emerald: 'from-emerald-500/10 to-emerald-500/5 border-emerald-500/20 text-emerald-400',
     violet: 'from-violet-500/10 to-violet-500/5 border-violet-500/20 text-violet-400',
     amber: 'from-amber-500/10 to-amber-500/5 border-amber-500/20 text-amber-400',
@@ -47,20 +133,22 @@ function StatCard({ icon, label, value, accent = 'emerald' }) {
     rose: 'from-rose-500/10 to-rose-500/5 border-rose-500/20 text-rose-400',
     cyan: 'from-cyan-500/10 to-cyan-500/5 border-cyan-500/20 text-cyan-400',
   }
+  const accentClass = accentMap[accent] ?? accentMap.emerald
+  const badgeColor = accentClass.split(' ').pop() ?? 'text-emerald-400'
   return (
-    <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${accentMap[accent]} border p-4 transition hover:scale-[1.02]`}>
+    <div className={`relative overflow-hidden rounded-xl bg-gradient-to-br ${accentClass} border p-4 transition hover:scale-[1.02]`}>
       <div className="flex items-center gap-3">
         <span className="text-2xl shrink-0">{icon}</span>
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-wider text-neutral-400 font-medium truncate" title={label}>{label}</p>
-          <p className={`text-xl font-bold mt-0.5 truncate ${accentMap[accent]?.split(' ').pop()}`} title={value}>{value}</p>
+          <p className={`text-xl font-bold mt-0.5 truncate ${badgeColor}`} title={String(value)}>{value}</p>
         </div>
       </div>
     </div>
   )
 }
 
-function TabButton({ active, onClick, children, count }) {
+function TabButton({ active, onClick, children, count }: { active: boolean; onClick: () => void; children: React.ReactNode; count?: number }) {
   return (
     <button
       onClick={onClick}
@@ -83,19 +171,21 @@ function TabButton({ active, onClick, children, count }) {
 }
 
 export default function ProfilePage() {
-  const user = useSelector(selectUser)
-  const isAdmin = useSelector(selectIsAdmin)
-  const [profile, setProfile] = useState(null)
+  const dispatch = useAppDispatch()
+  const user = useAppSelector(selectUser) as User | null
+  const isAdmin = useAppSelector(selectIsAdmin)
+  const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('bookings')
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<ProfileTab>('bookings')
 
   const fetchProfile = async () => {
     try {
       const res = await api.get('/profile')
       setProfile(res.data)
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load profile')
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } } }
+      setError(errorObj.response?.data?.message || 'Failed to load profile')
     } finally {
       setLoading(false)
     }
@@ -127,20 +217,34 @@ export default function ProfilePage() {
     )
   }
 
-  const { stats, bookings, orders, hostedEvents } = profile
+  const profileData: ProfileData = profile ?? {
+    user: undefined,
+    stats: {
+      totalBookings: 0,
+      totalSpent: 0,
+      uniqueEvents: 0,
+      eventsAttended: 0,
+      eventsHosted: 0,
+      totalOrders: 0,
+    },
+    bookings: [],
+    orders: [],
+    hostedEvents: [],
+  }
+  const { stats, bookings, orders, hostedEvents } = profileData
   const now = new Date()
 
   // Group orders by group_booking_id for display
-  const ordersByBooking = orders.reduce((acc, order) => {
-    const key = order.group_booking_id || order.id
+  const ordersByBooking = orders.reduce<Record<string, BookingOrder[]>>((acc, order) => {
+    const key = String(order.group_booking_id ?? order.id)
     if (!acc[key]) acc[key] = []
     acc[key].push(order)
     return acc
   }, {})
 
   // Upcoming events (events with future dates that user has booked)
-  const upcomingBookings = bookings.filter(b => new Date(b.event_date) >= now)
-  const pastBookings = bookings.filter(b => new Date(b.event_date) < now)
+  const upcomingBookings = bookings.filter((b: Booking) => new Date(b.event_date) >= now)
+  const pastBookings = bookings.filter((b: Booking) => new Date(b.event_date) < now)
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -310,7 +414,7 @@ export default function ProfilePage() {
 
 /* ============ Sub-components ============ */
 
-function EmptyState({ icon, title, description, action }) {
+function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <span className="text-5xl mb-4 opacity-50">{icon}</span>
@@ -328,11 +432,11 @@ function EmptyState({ icon, title, description, action }) {
   )
 }
 
-function BookingCard({ booking, orders, showCountdown, isPast }) {
+function BookingCard({ booking, orders, showCountdown, isPast }: { booking: Booking; orders: BookingOrder[]; showCountdown?: boolean; isPast?: boolean }) {
   const [expanded, setExpanded] = useState(false)
 
   const daysUntil = showCountdown
-    ? Math.ceil((new Date(booking.event_date) - new Date()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(booking.event_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null
 
   return (
@@ -392,7 +496,7 @@ function BookingCard({ booking, orders, showCountdown, isPast }) {
         <div className="px-5 pb-5 border-t border-neutral-700/40 pt-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider">Order Details</p>
-            <p className="text-[10px] text-neutral-600 font-mono">ID: {booking.id.slice(0, 8)}</p>
+            <p className="text-[10px] text-neutral-600 font-mono">ID: {String(booking.id).slice(0, 8)}</p>
           </div>
           
           {orders.length > 0 ? (
@@ -440,24 +544,24 @@ function BookingCard({ booking, orders, showCountdown, isPast }) {
   )
 }
 
-function HostedEventCard({ event, refreshProfile }) {
-  const dispatch = useDispatch()
+function HostedEventCard({ event, refreshProfile }: { event: HostedEvent; refreshProfile: () => void }) {
+  const dispatch = useAppDispatch()
   const [isEditing, setIsEditing] = useState(false)
   const [showAddons, setShowAddons] = useState(false)
   const [showPromos, setShowPromos] = useState(false)
-  const isPast = new Date(event.date) < new Date()
+  const isPast = event.date ? new Date(event.date) < new Date() : false
   const isCancelled = event.status === 'cancelled'
 
   // --- Add-on management state ---
-  const [addons, setAddons] = useState([])
+  const [addons, setAddons] = useState<Addon[]>([])
   const [addonsLoading, setAddonsLoading] = useState(false)
-  const [addonForm, setAddonForm] = useState({ name: '', description: '', price: '', maxQuantity: '' })
+  const [addonForm, setAddonForm] = useState<{ name: string; description: string; price: string; maxQuantity: string }>({ name: '', description: '', price: '', maxQuantity: '' })
   const [addonSaving, setAddonSaving] = useState(false)
 
   // --- Promo code management state ---
-  const [promos, setPromos] = useState([])
+  const [promos, setPromos] = useState<Promo[]>([])
   const [promosLoading, setPromosLoading] = useState(false)
-  const [promoForm, setPromoForm] = useState({ code: '', discountType: 'pct', discountValue: '', maxUses: '', expiresAt: '' })
+  const [promoForm, setPromoForm] = useState<{ code: string; discountType: 'pct' | 'flat' | string; discountValue: string; maxUses: string; expiresAt: string }>({ code: '', discountType: 'pct', discountValue: '', maxUses: '', expiresAt: '' })
   const [promoSaving, setPromoSaving] = useState(false)
 
   const fetchAddons = async () => {
@@ -494,13 +598,14 @@ function HostedEventCard({ event, refreshProfile }) {
       })
       setAddonForm({ name: '', description: '', price: '', maxQuantity: '' })
       fetchAddons()
-    } catch (e) {
-      alert(e.response?.data?.message || 'Failed to create add-on')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      alert(err.response?.data?.message || 'Failed to create add-on')
     }
     setAddonSaving(false)
   }
 
-  const handleDeleteAddon = async (addonId) => {
+  const handleDeleteAddon = async (addonId: string | number) => {
     if (!window.confirm('Delete this add-on?')) return
     try { await api.delete(`/events/${event.id}/addons/${addonId}`); fetchAddons() } catch {}
   }
@@ -518,13 +623,14 @@ function HostedEventCard({ event, refreshProfile }) {
       })
       setPromoForm({ code: '', discountType: 'pct', discountValue: '', maxUses: '', expiresAt: '' })
       fetchPromos()
-    } catch (e) {
-      alert(e.response?.data?.message || 'Failed to create promo code')
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } }
+      alert(err.response?.data?.message || 'Failed to create promo code')
     }
     setPromoSaving(false)
   }
 
-  const handleDeletePromo = async (codeId) => {
+  const handleDeletePromo = async (codeId: string | number) => {
     if (!window.confirm('Delete this promo code?')) return
     try { await api.delete(`/events/${event.id}/promo-codes/${codeId}`); fetchPromos() } catch {}
   }
@@ -534,9 +640,9 @@ function HostedEventCard({ event, refreshProfile }) {
       try {
         await dispatch(cancelEvent(event.id)).unwrap()
         refreshProfile()
-      } catch (err) {
-        const msg = err?.message || err?.data?.message || 'Failed to cancel event'
-        alert(msg)
+      } catch (err: unknown) {
+        const errorObj = err as { message?: string; data?: { message?: string } }
+        alert(errorObj.message || errorObj.data?.message || 'Failed to cancel event')
       }
     }
   }
@@ -546,9 +652,9 @@ function HostedEventCard({ event, refreshProfile }) {
       try {
         await dispatch(deleteEvent(event.id)).unwrap()
         refreshProfile()
-      } catch (err) {
-        const msg = err?.message || err?.data?.message || 'Failed to delete event'
-        alert(msg)
+      } catch (err: unknown) {
+        const errorObj = err as { message?: string; data?: { message?: string } }
+        alert(errorObj.message || errorObj.data?.message || 'Failed to delete event')
       }
     }
   }
@@ -739,18 +845,18 @@ function HostedEventCard({ event, refreshProfile }) {
 }
 
 
-function EditEventModal({ event, onClose, onSuccess }) {
-  const dispatch = useDispatch()
-  const [form, setForm] = useState({
+function EditEventModal({ event, onClose, onSuccess }: { event: HostedEvent; onClose: () => void; onSuccess: () => void }) {
+  const dispatch = useAppDispatch()
+  const [form, setForm] = useState<{ name?: string; date: string; priceNormal?: number; pricePremium?: number }>({
     name: event.name,
-    date: new Date(event.date).toISOString().slice(0, 16),
+    date: event.date ? new Date(event.date).toISOString().slice(0, 16) : '',
     priceNormal: event.price_normal,
     pricePremium: event.price_premium
   })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -768,8 +874,9 @@ function EditEventModal({ event, onClose, onSuccess }) {
         }
       })).unwrap()
       onSuccess()
-    } catch (err) {
-      setError(err.message || 'Failed to update event')
+    } catch (err: unknown) {
+      const errorObj = err as { message?: string }
+      setError(errorObj.message || 'Failed to update event')
       setLoading(false)
     }
   }
@@ -819,7 +926,7 @@ function EditEventModal({ event, onClose, onSuccess }) {
                   type="number" 
                   min="1"
                   value={form.priceNormal} 
-                  onChange={e => setForm({...form, priceNormal: e.target.value})}
+                  onChange={e => setForm({...form, priceNormal: Number(e.target.value)})}
                   className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-white focus:outline-none focus:border-emerald-500 transition"
                   required
                 />
@@ -830,7 +937,7 @@ function EditEventModal({ event, onClose, onSuccess }) {
                   type="number" 
                   min="1"
                   value={form.pricePremium} 
-                  onChange={e => setForm({...form, pricePremium: e.target.value})}
+                  onChange={e => setForm({...form, pricePremium: Number(e.target.value)})}
                   className="w-full px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 text-white focus:outline-none focus:border-emerald-500 transition"
                   required
                 />
